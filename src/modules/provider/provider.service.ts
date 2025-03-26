@@ -1,36 +1,60 @@
-import { Injectable } from '@nestjs/common';
-import { CreateProviderDto } from './dto/create-provider.dto';
-import { UpdateProviderDto } from './dto/update-provider.dto';
-import { Provider, ProviderDocument } from './entities/provider.entity';
-import { Model } from 'mongoose';
-import { InjectModel } from '@nestjs/mongoose';
-import { UserService } from '../user/user.service';
+import { Injectable, NotFoundException } from '@nestjs/common'
+import { CreateProviderDto } from './dto/create-provider.dto'
+import { UpdateProviderDto } from './dto/update-provider.dto'
+import {
+  Provider,
+  ProviderDocument,
+  GetProviderDocument,
+} from './entities/provider.entity'
+import { Model } from 'mongoose'
+import { InjectModel } from '@nestjs/mongoose'
 
 @Injectable()
 export class ProviderService {
-
   constructor(
-    @InjectModel(Provider.name) private providerModel: Model<ProviderDocument>,
-    private userService: UserService
-  ) { }
+    @InjectModel(Provider.name) private providerModel: Model<ProviderDocument>
+  ) {}
 
-  create(createProviderDto: CreateProviderDto) {
-    return this.providerModel.create(createProviderDto);
+  async create(
+    createProviderDto: CreateProviderDto
+  ): Promise<GetProviderDocument> {
+    const createdProvider = new this.providerModel(createProviderDto)
+    return createdProvider.save()
   }
 
-  findAll() {
-    return this.providerModel.find().populate('userId').exec();
+  async findAll(): Promise<GetProviderDocument[]> {
+    return this.providerModel.find().populate('userId').exec()
   }
 
-  findOne(id: string) {
-    return this.providerModel.findById(id).populate('userId').exec();
+  async findOne(id: string): Promise<GetProviderDocument> {
+    const provider = await this.providerModel
+      .findById(id)
+      .populate('userId')
+      .exec()
+    if (!provider) {
+      throw new NotFoundException(`Proveedor con ID ${id} no encontrado`)
+    }
+    return provider
   }
 
-  update(id: string, updateProviderDto: UpdateProviderDto) {
-    return this.providerModel.findByIdAndUpdate(id, updateProviderDto).exec();
+  async update(
+    id: string,
+    updateProviderDto: UpdateProviderDto
+  ): Promise<GetProviderDocument> {
+    const updatedProvider = await this.providerModel
+      .findByIdAndUpdate(id, updateProviderDto, { new: true })
+      .populate('userId')
+      .exec()
+    if (!updatedProvider) {
+      throw new NotFoundException(`Proveedor con ID ${id} no encontrado`)
+    }
+    return updatedProvider
   }
 
-  remove(id: string) {
-    return this.providerModel.findByIdAndDelete(id).exec();
+  async remove(id: string): Promise<void> {
+    const result = await this.providerModel.findByIdAndDelete(id).exec()
+    if (!result) {
+      throw new NotFoundException(`Proveedor con ID ${id} no encontrado`)
+    }
   }
 }
