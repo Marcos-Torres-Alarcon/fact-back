@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, HttpException, HttpStatus } from '@nestjs/common'
 import { CreateProviderDto } from './dto/create-provider.dto'
 import { UpdateProviderDto } from './dto/update-provider.dto'
 import {
@@ -13,7 +13,7 @@ import { InjectModel } from '@nestjs/mongoose'
 export class ProviderService {
   constructor(
     @InjectModel(Provider.name) private providerModel: Model<ProviderDocument>
-  ) {}
+  ) { }
 
   async create(
     createProviderDto: CreateProviderDto
@@ -32,7 +32,7 @@ export class ProviderService {
       .populate('userId')
       .exec()
     if (!provider) {
-      throw new NotFoundException(`Proveedor con ID ${id} no encontrado`)
+      throw new HttpException('Provider not found', HttpStatus.NOT_FOUND)
     }
     return provider
   }
