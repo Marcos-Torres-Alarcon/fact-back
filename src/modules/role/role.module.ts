@@ -1,17 +1,15 @@
-import { Module } from '@nestjs/common';
-import { RoleService } from './role.service';
-import { RoleController } from './role.controller';
-import { Role, RoleSchema } from './entities/role.entity';
-import { MongooseModule } from '@nestjs/mongoose';
-import { UserModule } from '../user/user.module';
-import { JwtService } from '@nestjs/jwt';
+import { Module } from '@nestjs/common'
+import { MongooseModule } from '@nestjs/mongoose'
+import { RoleController } from './role.controller'
+import { RoleService } from './role.service'
+import { Role, RoleSchema } from './entities/role.entity'
+
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Role.name, schema: RoleSchema }]),
-    UserModule,
   ],
   controllers: [RoleController],
-  providers: [RoleService, JwtService],
-  exports: [RoleService]
+  providers: [RoleService],
+  exports: [RoleService],
 })
-export class RoleModule { }
+export class RoleModule {}
