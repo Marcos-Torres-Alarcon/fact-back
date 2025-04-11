@@ -18,8 +18,8 @@ export class CreateUserDto {
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsString()
-  @IsNotEmpty()
-  userId: string
+  @IsOptional()
+  userId?: string
 
   @ApiProperty({
     description: 'Nombre del usuario',
@@ -126,4 +126,16 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   createdBy?: string
+
+  @IsOptional()
+  @IsString()
+  address?: string
+
+  @IsOptional()
+  @IsString()
+  companyName?: string
+
+  @IsOptional()
+  @IsString()
+  companyId?: string
 }

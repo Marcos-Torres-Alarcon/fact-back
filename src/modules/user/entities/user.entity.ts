@@ -42,8 +42,8 @@ export class User extends Document {
   @Prop({ required: true, enum: UserRole, default: UserRole.USER })
   role: UserRole
 
-  @Prop({ type: String, required: true })
-  userId: string
+  @Prop({ type: String })
+  userId?: string
 
   @Prop({ type: String })
   phone?: string

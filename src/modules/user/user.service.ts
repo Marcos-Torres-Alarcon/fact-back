@@ -274,4 +274,22 @@ export class UserService {
     
     return newUser.save();
   }
+
+  async delete(id: string): Promise<void> {
+    try {
+      this.logger.log(`Eliminando usuario con ID: ${id}`);
+      
+      const user = await this.userModel.findById(id);
+      if (!user) {
+        this.logger.warn(`Usuario no encontrado para eliminar: ${id}`);
+        throw new NotFoundException('Usuario no encontrado');
+      }
+
+      await this.userModel.findByIdAndDelete(id);
+      this.logger.log(`Usuario eliminado exitosamente: ${id}`);
+    } catch (error) {
+      this.logger.error(`Error al eliminar usuario: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
 }

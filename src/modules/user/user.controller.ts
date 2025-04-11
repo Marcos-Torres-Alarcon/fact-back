@@ -228,18 +228,18 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Eliminar un usuario' })
   @ApiResponse({
-    status: 204,
+    status: 200,
     description: 'Usuario eliminado exitosamente',
   })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiResponse({ status: 500, description: 'Error interno del servidor' })
-  async remove(@Param('id') id: string, @Req() req: ExpressRequest): Promise<void> {
+  async delete(@Param('id') id: string): Promise<void> {
     try {
       this.logger.log(`Recibida solicitud para eliminar usuario: ${id}`);
-      await this.userService.remove(id, req.user);
+      await this.userService.delete(id);
       this.logger.log(`Usuario eliminado exitosamente: ${id}`);
     } catch (error) {
       this.logger.error(`Error al eliminar usuario: ${error.message}`, error.stack);
