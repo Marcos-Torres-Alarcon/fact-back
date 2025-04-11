@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common'
+import { MongooseModule } from '@nestjs/mongoose'
 import { ProviderService } from './provider.service'
 import { ProviderController } from './provider.controller'
 import { Provider, ProviderSchema } from './entities/provider.entity'
-import { MongooseModule } from '@nestjs/mongoose'
 import { UserModule } from '../user/user.module'
 
 @Module({
@@ -10,7 +10,7 @@ import { UserModule } from '../user/user.module'
     MongooseModule.forFeature([
       { name: Provider.name, schema: ProviderSchema },
     ]),
-    UserModule,
+    UserModule
   ],
   controllers: [ProviderController],
   providers: [ProviderService],
