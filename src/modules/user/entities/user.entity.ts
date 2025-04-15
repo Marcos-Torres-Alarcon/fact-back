@@ -3,7 +3,7 @@ import { Document, Schema as MongooseSchema } from 'mongoose'
 import { ApiProperty } from '@nestjs/swagger'
 import { Company } from '../../company/entities/company.entity'
 import { UserRole } from '../../auth/enums/user-role.enum'
-import { Provider } from '../../provider/entities/provider.entity'
+import { Provider } from '../../providers/entities/provider.entity'
 
 export interface UserResponse {
   _id: string

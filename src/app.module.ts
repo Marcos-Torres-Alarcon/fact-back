@@ -13,7 +13,7 @@ import { JobModule } from './modules/job/job.module'
 import { InvoiceModule } from './modules/invoice/invoice.module'
 import { PaymentModule } from './modules/payment/payment.module'
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module'
-import { ProviderModule } from './modules/provider/provider.module'
+import { ProvidersModule } from './modules/providers/providers.module'
 
 @Module({
   imports: [
@@ -31,7 +31,7 @@ import { ProviderModule } from './modules/provider/provider.module'
     InvoiceModule,
     PaymentModule,
     PurchaseOrderModule,
-    ProviderModule,
+    ProvidersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

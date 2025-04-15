@@ -12,6 +12,8 @@ import { MongooseModule } from '@nestjs/mongoose'
 import { User, UserSchema } from '../user/entities/user.entity'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { UsersModule } from '../users/users.module'
+import { Provider, ProviderSchema } from '../providers/entities/provider.entity'
+import { ProvidersModule } from '../providers/providers.module'
 
 @Module({
   imports: [
@@ -28,8 +30,12 @@ import { UsersModule } from '../users/users.module'
       }),
       inject: [ConfigService],
     }),
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: Provider.name, schema: ProviderSchema },
+    ]),
     UsersModule,
+    ProvidersModule,
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, GoogleStrategy],
   controllers: [AuthController],
