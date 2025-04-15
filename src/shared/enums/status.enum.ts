@@ -1,0 +1,7 @@
+export enum CommonStatus {
+  PENDING = 'PENDIENTE',
+  ACTIVE = 'ACTIVO',
+  INACTIVE = 'INACTIVO',
+  COMPLETED = 'COMPLETADO',
+  CANCELLED = 'CANCELADO',
+}
