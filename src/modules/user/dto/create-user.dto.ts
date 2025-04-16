@@ -58,7 +58,7 @@ export class CreateUserDto {
     example: '+1234567890',
     required: false,
   })
-  @IsPhoneNumber()
+  @IsString()
   @IsOptional()
   phone?: string
 

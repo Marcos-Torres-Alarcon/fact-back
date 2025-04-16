@@ -1,11 +1,7 @@
 import {
   BadRequestException,
   Injectable,
-  HttpException,
-  HttpStatus,
   ForbiddenException,
-  NotFoundException,
-  ConflictException,
   UnauthorizedException,
 } from '@nestjs/common'
 import { UsersService } from '../users/services/users.service'
@@ -92,9 +88,10 @@ export class AuthService {
     }
   }
 
-  async login(
-    loginDto: LoginDto
-  ): Promise<{ access_token: string; user: UserResponse }> {
+  async login(loginDto: LoginDto): Promise<{
+    success: boolean
+    data: { user: UserResponse; token: string }
+  }> {
     const user = await this.validateUser(loginDto.email, loginDto.password)
     if (!user) {
       throw new UnauthorizedException('Credenciales inválidas')
@@ -108,8 +105,11 @@ export class AuthService {
     const { password, ...userResponse } = user.toObject()
 
     return {
-      access_token: token,
-      user: userResponse,
+      success: true,
+      data: {
+        user: userResponse,
+        token,
+      },
     }
   }
 
@@ -171,7 +171,7 @@ export class AuthService {
       const payload: JwtPayload = {
         sub: user._id.toString(),
         email: user.email,
-        role: user.role,
+        role: user.role as UserRole,
         firstName: user.firstName,
         lastName: user.lastName,
         companyId: user.companyId ? user.companyId.toString() : null,

@@ -66,16 +66,26 @@ export class ProvidersController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.PROVIDER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.COMPANY,
+    UserRole.PROVIDER,
+    UserRole.MANAGER,
+    UserRole.TREASURY
+  )
   @ApiOperation({ summary: 'Obtener todos los proveedores' })
   async findAll(@Req() req: IRequest) {
     this.logger.debug(`findAll - User role: ${req.user.role}`)
     this.logger.debug(`findAll - User companyId: ${req.user.companyId}`)
     this.logger.debug(`findAll - User data: ${JSON.stringify(req.user)}`)
 
-    if (req.user.role === UserRole.COMPANY) {
+    if (
+      req.user.role === UserRole.COMPANY ||
+      req.user.role === UserRole.MANAGER ||
+      req.user.role === UserRole.TREASURY
+    ) {
       if (!req.user.companyId) {
-        this.logger.warn('El usuario COMPANY no tiene companyId asignado')
+        this.logger.warn('El usuario no tiene companyId asignado')
         throw new ForbiddenException('No tienes una compañía asignada')
       }
 

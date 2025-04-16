@@ -12,22 +12,18 @@ import {
 } from 'class-validator'
 import { Type } from 'class-transformer'
 import { ApiProperty } from '@nestjs/swagger'
-import { ProjectStatus } from '../enums/project-status.enum'
 
-export { ProjectStatus }
-
-export enum ProjectPriority {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH'
+export enum ProjectStatus {
+  PENDING = 'PENDIENTE',
+  IN_PROGRESS = 'EN_PROGRESO',
+  COMPLETED = 'COMPLETADO',
+  CANCELLED = 'CANCELADO',
 }
 
 export enum WorkStatus {
-  NOT_STARTED = 'NOT_STARTED',
-  IN_PROGRESS = 'IN_PROGRESS',
-  PENDING_REVIEW = 'PENDING_REVIEW',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED'
+  PENDING = 'PENDIENTE',
+  COMPLETED = 'COMPLETADO',
+  CANCELLED = 'CANCELADO',
 }
 
 export enum InvoiceStatus {
@@ -35,20 +31,20 @@ export enum InvoiceStatus {
   SUBMITTED = 'SUBMITTED',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
-  PAID = 'PAID'
+  PAID = 'PAID',
 }
 
 export enum PaymentStatus {
   PENDING = 'PENDING',
   PROCESSING = 'PROCESSING',
   COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED'
+  FAILED = 'FAILED',
 }
 
 export class CreateProjectDto {
   @ApiProperty({
     description: 'Nombre del proyecto',
-    example: 'Construcción de Edificio Residencial'
+    example: 'Construcción de Edificio Residencial',
   })
   @IsString()
   @IsNotEmpty()
@@ -56,23 +52,15 @@ export class CreateProjectDto {
 
   @ApiProperty({
     description: 'Descripción detallada del proyecto',
-    example: 'Proyecto de construcción de un edificio residencial de 10 pisos'
+    example: 'Proyecto de construcción de un edificio residencial de 10 pisos',
   })
   @IsString()
   @IsNotEmpty()
   description: string
 
   @ApiProperty({
-    description: 'ID del cliente asociado al proyecto',
-    example: '507f1f77bcf86cd799439011'
-  })
-  @IsMongoId()
-  @IsNotEmpty()
-  clientId: string
-
-  @ApiProperty({
     description: 'ID de la compañía asociada al proyecto',
-    example: '507f1f77bcf86cd799439012'
+    example: '507f1f77bcf86cd799439012',
   })
   @IsMongoId()
   @IsNotEmpty()
@@ -81,7 +69,7 @@ export class CreateProjectDto {
   @ApiProperty({
     description: 'ID del proveedor asignado al proyecto',
     example: '507f1f77bcf86cd799439013',
-    required: false
+    required: false,
   })
   @IsMongoId()
   @IsOptional()
@@ -90,15 +78,24 @@ export class CreateProjectDto {
   @ApiProperty({
     description: 'Estado del proyecto',
     enum: ProjectStatus,
-    example: ProjectStatus.PENDING
+    example: ProjectStatus.PENDING,
   })
   @IsEnum(ProjectStatus)
   @IsOptional()
   status?: ProjectStatus
 
   @ApiProperty({
+    description: 'Estado del trabajo',
+    enum: WorkStatus,
+    example: WorkStatus.PENDING,
+  })
+  @IsEnum(WorkStatus)
+  @IsOptional()
+  workStatus?: WorkStatus
+
+  @ApiProperty({
     description: 'Fecha de inicio del proyecto',
-    example: '2024-04-01T00:00:00.000Z'
+    example: '2024-04-01T00:00:00.000Z',
   })
   @Type(() => Date)
   @IsDate()
@@ -107,7 +104,7 @@ export class CreateProjectDto {
 
   @ApiProperty({
     description: 'Fecha de finalización estimada del proyecto',
-    example: '2025-03-31T00:00:00.000Z'
+    example: '2025-03-31T00:00:00.000Z',
   })
   @Type(() => Date)
   @IsDate()
@@ -116,16 +113,17 @@ export class CreateProjectDto {
 
   @ApiProperty({
     description: 'Presupuesto total del proyecto',
-    example: 1000000
+    example: 1000000,
   })
   @IsNumber()
+  @Min(0)
   @IsNotEmpty()
   budget: number
 
   @ApiProperty({
     description: 'Notas adicionales sobre el proyecto',
     example: 'Proyecto con prioridad alta',
-    required: false
+    required: false,
   })
   @IsString()
   @IsOptional()
@@ -134,26 +132,16 @@ export class CreateProjectDto {
   @ApiProperty({
     description: 'Estado de actividad del proyecto',
     example: true,
-    required: false
+    required: false,
   })
   @IsBoolean()
   @IsOptional()
   isActive?: boolean = true
 
   @ApiProperty({
-    description: 'Estado del trabajo',
-    enum: WorkStatus,
-    example: WorkStatus.NOT_STARTED,
-    required: false
-  })
-  @IsEnum(WorkStatus)
-  @IsOptional()
-  workStatus?: WorkStatus
-
-  @ApiProperty({
     description: 'Fecha de inicio del trabajo',
     example: '2024-04-01T00:00:00.000Z',
-    required: false
+    required: false,
   })
   @Type(() => Date)
   @IsDate()
@@ -163,7 +151,7 @@ export class CreateProjectDto {
   @ApiProperty({
     description: 'Fecha de finalización del trabajo',
     example: '2024-05-01T00:00:00.000Z',
-    required: false
+    required: false,
   })
   @Type(() => Date)
   @IsDate()
@@ -173,7 +161,7 @@ export class CreateProjectDto {
   @ApiProperty({
     description: 'Notas sobre el trabajo realizado',
     example: 'Se completó la fase inicial del proyecto',
-    required: false
+    required: false,
   })
   @IsString()
   @IsOptional()
@@ -182,7 +170,7 @@ export class CreateProjectDto {
   @ApiProperty({
     description: 'Archivos adjuntos del trabajo',
     example: ['url1', 'url2'],
-    required: false
+    required: false,
   })
   @IsArray()
   @IsString({ each: true })
@@ -194,7 +182,7 @@ export class UpdateProjectStatusDto {
   @ApiProperty({
     description: 'Nuevo estado del proyecto',
     enum: ProjectStatus,
-    example: ProjectStatus.IN_PROGRESS
+    example: ProjectStatus.IN_PROGRESS,
   })
   @IsEnum(ProjectStatus)
   @IsNotEmpty()
@@ -205,7 +193,7 @@ export class UpdateWorkStatusDto {
   @ApiProperty({
     description: 'Nuevo estado del trabajo',
     enum: WorkStatus,
-    example: WorkStatus.IN_PROGRESS
+    example: WorkStatus.COMPLETED,
   })
   @IsEnum(WorkStatus)
   @IsNotEmpty()
@@ -214,30 +202,19 @@ export class UpdateWorkStatusDto {
   @ApiProperty({
     description: 'Notas sobre el trabajo',
     example: 'Se completó la fase inicial',
-    required: false
+    required: false,
   })
   @IsString()
   @IsOptional()
-  workNotes?: string
-
-  @ApiProperty({
-    description: 'Archivos adjuntos del trabajo',
-    example: ['url1', 'url2'],
-    required: false
-  })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  workAttachments?: string[]
+  notes?: string
 }
 
 export class ApproveWorkDto {
   @ApiProperty({
     description: 'Notas de aprobación',
     example: 'Trabajo aprobado satisfactoriamente',
-    required: false
   })
   @IsString()
-  @IsOptional()
-  approvalNotes?: string
+  @IsNotEmpty()
+  notes: string
 }

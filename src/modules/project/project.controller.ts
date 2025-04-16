@@ -18,6 +18,7 @@ import {
   UpdateProjectStatusDto,
   UpdateWorkStatusDto,
   ApproveWorkDto,
+  ProjectStatus,
 } from './dto/create-project.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../auth/guards/roles.guard'
@@ -32,7 +33,6 @@ import {
   ApiBody,
 } from '@nestjs/swagger'
 import { Project } from './entities/project.entity'
-import { ProjectStatus } from './enums/project-status.enum'
 
 @ApiTags('projects')
 @Controller('projects')
@@ -158,7 +158,7 @@ export class ProjectController {
   updateStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateProjectStatusDto,
-    @Request() req,
+    @Request() req
   ) {
     return this.projectService.updateStatus(id, updateStatusDto, req.user)
   }
@@ -175,7 +175,7 @@ export class ProjectController {
   updateWorkStatus(
     @Param('id') id: string,
     @Body() updateWorkDto: UpdateWorkStatusDto,
-    @Request() req,
+    @Request() req
   ) {
     return this.projectService.updateWorkStatus(id, updateWorkDto, req.user)
   }
@@ -192,7 +192,7 @@ export class ProjectController {
   approveWork(
     @Param('id') id: string,
     @Body() approveWorkDto: ApproveWorkDto,
-    @Request() req,
+    @Request() req
   ) {
     return this.projectService.approveWork(id, approveWorkDto, req.user)
   }
@@ -205,7 +205,7 @@ export class ProjectController {
     @Param('id') id: string,
     @Param('providerId') providerId: string
   ): Promise<Project> {
-    return this.projectService.assignProvider(id, providerId);
+    return this.projectService.assignProvider(id, providerId)
   }
 
   @Delete(':id')

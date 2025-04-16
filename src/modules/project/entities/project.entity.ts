@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Schema as MongooseSchema } from 'mongoose'
 import { ApiProperty } from '@nestjs/swagger'
-import { ProjectStatus, ProjectPriority } from '../dto/create-project.dto'
+import { ProjectStatus } from '../dto/create-project.dto'
 
 export interface ProjectDocument extends Document {
   name: string
