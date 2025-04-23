@@ -9,6 +9,7 @@ import {
   MinLength,
   IsBoolean,
   ValidateIf,
+  Matches,
 } from 'class-validator'
 import { UserRole, UserRoleDescription } from '../enums/user-role.enum'
 
@@ -43,6 +44,11 @@ export class CreateUserDto {
   @MinLength(6)
   @IsNotEmpty()
   password: string
+
+  @ApiProperty({ description: 'Teléfono del usuario (opcional)' })
+  @IsString()
+  @IsOptional()
+  phone?: string
 
   @ApiProperty({
     description: 'Rol del usuario',

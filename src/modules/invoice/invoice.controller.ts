@@ -55,7 +55,14 @@ export class InvoiceController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.PROVIDER,
+    UserRole.USER,
+    UserRole.COMPANY,
+    UserRole.MANAGER,
+    UserRole.TREASURY
+  )
   @ApiOperation({ summary: 'Obtener todas las facturas' })
   @ApiResponse({
     status: HttpStatus.OK,

@@ -40,16 +40,16 @@ export class AuthController {
     schema: {
       properties: {
         access_token: { type: 'string' },
-        user: { $ref: '#/components/schemas/UserResponse' }
-      }
-    }
+        user: { $ref: '#/components/schemas/UserResponse' },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
-    description: 'Datos de registro inválidos'
+    description: 'Datos de registro inválidos',
   })
   async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+    return this.authService.register(registerDto)
   }
 
   @Post('login')
@@ -60,13 +60,19 @@ export class AuthController {
     description: 'Login exitoso',
     schema: {
       properties: {
-        access_token: { type: 'string' },
-        user: { $ref: '#/components/schemas/UserResponse' }
-      }
-    }
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            user: { $ref: '#/components/schemas/UserResponse' },
+            token: { type: 'string' },
+          },
+        },
+      },
+    },
   })
   async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+    return this.authService.login(loginDto)
   }
 
   @Get('validate-token')
@@ -74,7 +80,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Validar token JWT' })
   async validateToken(@Req() req: ExpressRequest) {
-    return this.authService.validateToken(req);
+    return this.authService.validateToken(req)
   }
 
   @Get('profile')
@@ -82,8 +88,8 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener perfil del usuario' })
   getProfile(@GetUser() user: UserDocument): UserResponse {
-    const { password, ...userResponse } = user.toObject();
-    return userResponse;
+    const { password, ...userResponse } = user.toObject()
+    return userResponse
   }
 
   @Get('google')
@@ -106,11 +112,37 @@ export class AuthController {
     schema: {
       properties: {
         access_token: { type: 'string' },
-        user: { $ref: '#/components/schemas/UserResponse' }
-      }
-    }
+        user: { $ref: '#/components/schemas/UserResponse' },
+      },
+    },
   })
   async googleAuthCallback(@Req() req) {
-    return this.authService.googleLogin(req);
+    return this.authService.googleLogin(req)
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener información del usuario autenticado' })
+  @ApiResponse({
+    status: 200,
+    description: 'Información del usuario obtenida exitosamente',
+    schema: {
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            user: { $ref: '#/components/schemas/UserResponse' },
+          },
+        },
+      },
+    },
+  })
+  async getCurrentUser(@GetUser() user: UserResponse) {
+    return {
+      success: true,
+      data: { user },
+    }
   }
 }
