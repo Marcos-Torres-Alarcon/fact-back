@@ -9,6 +9,10 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Logger,
+  UseInterceptors,
+  UploadedFile,
+  HttpException,
 } from '@nestjs/common'
 import { InvoiceService } from './invoice.service'
 import { CreateInvoiceDto, InvoiceStatus } from './dto/create-invoice.dto'
@@ -25,13 +29,73 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../auth/guards/roles.guard'
 import { Roles } from '../auth/decorators/roles.decorator'
 import { UserRole } from '../auth/enums/user-role.enum'
+import { diskStorage } from 'multer'
+import { extname } from 'path'
+import { FileInterceptor } from '@nestjs/platform-express'
+
+const storageOptions = diskStorage({
+  destination: './uploads',
+  filename: (req, file, callback) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const extension = extname(file.originalname);
+    callback(null, `${file.fieldname}-${uniqueSuffix}${extension}`);
+  },
+});
 
 @ApiTags('invoices')
 @Controller('invoices')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  private readonly logger = new Logger(InvoiceController.name);
+
+  constructor(private readonly invoiceService: InvoiceService) { }
+
+  @Get('token-sunat')
+  getToken() {
+    return this.invoiceService.generateTokenSunat()
+  }
+
+  @Post('validate-from-image')
+  @UseInterceptors(FileInterceptor('invoiceImage'/*, { storage: storageOptions }*/)) // 'invoiceImage' es el nombre del campo en el form-data
+  async validateInvoice(@UploadedFile() file: Express.Multer.File) {
+    this.logger.log(`Received file: ${file?.originalname}, size: ${file?.size}`);
+
+    if (!file) {
+      this.logger.error('No file uploaded');
+      throw new HttpException(
+        'No se recibió ningún archivo de imagen.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Validar tipo de archivo (opcional pero recomendado)
+    //solo
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.mimetype)) {
+      this.logger.error(`Invalid file type: ${file.mimetype}`);
+      throw new HttpException(
+        'Tipo de archivo no soportado. Use JPG, PNG o GIF.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+
+    try {
+      const result = await this.invoiceService.validateInvoiceFromImage(file.buffer); // Pasamos el buffer directamente
+      this.logger.log(`Validation result for ${file.originalname}: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error processing file ${file.originalname}: ${error.message}`, error.stack);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Error procesando la imagen o validando la factura.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.PROVIDER)
@@ -185,4 +249,6 @@ export class InvoiceController {
   remove(@Param('id') id: string) {
     return this.invoiceService.remove(id)
   }
+
+
 }
