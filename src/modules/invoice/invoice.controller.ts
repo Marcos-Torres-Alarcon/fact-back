@@ -13,6 +13,7 @@ import {
   UseInterceptors,
   UploadedFile,
   HttpException,
+  Res,
 } from '@nestjs/common'
 import { InvoiceService } from './invoice.service'
 import { CreateInvoiceDto, InvoiceStatus } from './dto/create-invoice.dto'
@@ -30,6 +31,7 @@ import { RolesGuard } from '../auth/guards/roles.guard'
 import { Roles } from '../auth/decorators/roles.decorator'
 import { UserRole } from '../auth/enums/user-role.enum'
 import { FileInterceptor } from '@nestjs/platform-express'
+import { Response } from 'express'
 
 @ApiTags('invoices')
 @Controller('invoices')
@@ -38,7 +40,7 @@ import { FileInterceptor } from '@nestjs/platform-express'
 export class InvoiceController {
   private readonly logger = new Logger(InvoiceController.name)
 
-  constructor(private readonly invoiceService: InvoiceService) { }
+  constructor(private readonly invoiceService: InvoiceService) {}
 
   @Get('token-sunat')
   getToken() {
@@ -254,5 +256,86 @@ export class InvoiceController {
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string) {
     return this.invoiceService.remove(id)
+  }
+
+  @Post(':id/acta-aceptacion')
+  @UseInterceptors(
+    FileInterceptor('actaAceptacion', {
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB
+      },
+      fileFilter: (req, file, callback) => {
+        const allowedMimeTypes = ['application/pdf']
+        if (allowedMimeTypes.includes(file.mimetype)) {
+          callback(null, true)
+        } else {
+          callback(new Error('Solo se permiten archivos PDF'), false)
+        }
+      },
+    })
+  )
+  @Roles(UserRole.ADMIN, UserRole.PROVIDER)
+  @ApiOperation({ summary: 'Subir acta de aceptación para una factura' })
+  @ApiParam({ name: 'id', description: 'ID de la factura' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Acta de aceptación subida exitosamente',
+    type: Invoice,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Factura no encontrada',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Archivo inválido o no permitido',
+  })
+  async uploadActaAceptacion(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File
+  ) {
+    if (!file) {
+      throw new HttpException(
+        'No se recibió ningún archivo',
+        HttpStatus.BAD_REQUEST
+      )
+    }
+    return this.invoiceService.uploadActaAceptacion(id, file.buffer)
+  }
+
+  @Get(':id/acta-aceptacion/download')
+  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
+  @ApiOperation({ summary: 'Descargar acta de aceptación de una factura' })
+  @ApiParam({ name: 'id', description: 'ID de la factura' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Acta de aceptación descargada exitosamente',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Factura o acta de aceptación no encontrada',
+  })
+  async downloadActaAceptacion(@Param('id') id: string, @Res() res: Response) {
+    const { buffer, filename } =
+      await this.invoiceService.downloadActaAceptacion(id)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename=${filename}`)
+    res.send(buffer)
+  }
+
+  @Get(':id/pdf')
+  async getInvoicePdf(@Param('id') id: string, @Res() res: Response) {
+    const invoice = await this.invoiceService.findOne(id)
+    if (!invoice || !invoice.pdfFile) {
+      throw new HttpException('Factura no encontrada', HttpStatus.NOT_FOUND)
+    }
+
+    const buffer = Buffer.from(invoice.pdfFile, 'base64')
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename=factura-${invoice.serie}-${invoice.correlativo}.pdf`
+    )
+    res.send(buffer)
   }
 }

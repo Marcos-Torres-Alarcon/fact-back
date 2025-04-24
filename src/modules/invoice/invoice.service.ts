@@ -67,17 +67,11 @@ export class InvoiceService {
   }
 
   async findAll(): Promise<Invoice[]> {
-    return this.invoiceModel
-      .find()
-      .exec()
+    return this.invoiceModel.find().exec()
   }
 
   async findOne(id: string): Promise<Invoice> {
-    const invoice = await this.invoiceModel
-      .findById(id)
-      .populate('clientId')
-      .populate('projectId')
-      .exec()
+    const invoice = await this.invoiceModel.findById(id).exec()
     if (!invoice) {
       throw new NotFoundException(`Factura con ID ${id} no encontrada`)
     }
@@ -149,6 +143,39 @@ export class InvoiceService {
     return updatedInvoice
   }
 
+  async uploadActaAceptacion(id: string, fileBuffer: Buffer): Promise<Invoice> {
+    const invoice = await this.invoiceModel.findById(id)
+    if (!invoice) {
+      throw new NotFoundException(`Factura con ID ${id} no encontrada`)
+    }
+
+    // Convertir el buffer a base64 para almacenamiento
+    const base64File = fileBuffer.toString('base64')
+    invoice.actaAceptacion = base64File
+    return invoice.save()
+  }
+
+  async downloadActaAceptacion(
+    id: string
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    const invoice = await this.invoiceModel.findById(id)
+    if (!invoice) {
+      throw new NotFoundException(`Factura con ID ${id} no encontrada`)
+    }
+
+    if (!invoice.actaAceptacion) {
+      throw new NotFoundException(
+        `No se encontró el acta de aceptación para la factura con ID ${id}`
+      )
+    }
+
+    // Convertir base64 a buffer
+    const buffer = Buffer.from(invoice.actaAceptacion, 'base64')
+    const filename = `acta-aceptacion-${invoice.serie}-${invoice.correlativo}.pdf`
+
+    return { buffer, filename }
+  }
+
   async remove(id: string): Promise<void> {
     const result = await this.invoiceModel.findByIdAndDelete(id).exec()
     if (!result) {
@@ -193,6 +220,7 @@ export class InvoiceService {
   ): Promise<any> {
     this.logger.log('Starting file processing...')
     let extractedData: any
+    let pdfBase64: string | undefined
 
     try {
       if (!fileBuffer || fileBuffer.length === 0) {
@@ -200,6 +228,10 @@ export class InvoiceService {
           'El archivo está vacío o no se pudo leer correctamente',
           HttpStatus.BAD_REQUEST
         )
+      }
+
+      if (mimeType === 'application/pdf') {
+        pdfBase64 = fileBuffer.toString('base64')
       }
 
       if (mimeType.startsWith('image/') || mimeType === 'application/pdf') {
@@ -299,7 +331,7 @@ export class InvoiceService {
         }
 
         const headers = {
-          'Authorization': `Bearer ${sunatToken.access_token}`,
+          Authorization: `Bearer ${sunatToken.access_token}`,
           'Content-Type': 'application/json',
         }
 
@@ -316,9 +348,11 @@ export class InvoiceService {
 
           const validationResult = this.interpretSunatResponse(response.data)
 
-          this.create({
+          // Crear la factura con el PDF si está disponible
+          const createdInvoice = await this.create({
             ...extractedData,
             state: validationResult.status,
+            pdfFile: pdfBase64, // Guardar el PDF en base64
           })
 
           return {
@@ -326,6 +360,7 @@ export class InvoiceService {
             status: validationResult.status,
             details: validationResult.details,
             extractedData: extractedData,
+            invoiceId: createdInvoice._id,
           }
         } catch (error) {
           console.log(error)
@@ -446,7 +481,7 @@ export class InvoiceService {
   // Función para interpretar la respuesta específica de SUNAT
   private interpretSunatResponse(sunatData: any): {
     status: string
-    details: any,
+    details: any
     message: string
   } {
     this.logger.log('Interpreting SUNAT response...', sunatData)
@@ -455,10 +490,19 @@ export class InvoiceService {
     // Ejemplo hipotético:
     if (sunatData.success === true && sunatData.data?.estadoCp === '0') {
       // '1' podría ser ACEPTADO
-      return { status: 'VALIDO_ACEPTADO', details: sunatData.data, message: 'El comprobante es válido y fue facturado a esta empresa.' }
+      return {
+        status: 'VALIDO_ACEPTADO',
+        details: sunatData.data,
+        message: 'El comprobante es válido y fue facturado a esta empresa.',
+      }
     } else if (sunatData.success === true && sunatData.data?.estadoCp === '1') {
       // '0' podría ser RECHAZADO o ANULADO
-      return { status: 'VALIDO_NO_PERTENECE', details: sunatData.data, message: 'El comprobante es válido, pero no fue facturado a esta empresa.' }
+      return {
+        status: 'VALIDO_NO_PERTENECE',
+        details: sunatData.data,
+        message:
+          'El comprobante es válido, pero no fue facturado a esta empresa.',
+      }
     } else if (sunatData.cod === '98') {
       // Código hipotético para "no encontrado"
       return {
@@ -471,7 +515,11 @@ export class InvoiceService {
       this.logger.warn(
         `Uninterpretable SUNAT response: ${JSON.stringify(sunatData)}`
       )
-      return { status: 'ERROR_SUNAT', details: sunatData, message: 'Error al validar el comprobante.' }
+      return {
+        status: 'ERROR_SUNAT',
+        details: sunatData,
+        message: 'Error al validar el comprobante.',
+      }
     }
   }
 }

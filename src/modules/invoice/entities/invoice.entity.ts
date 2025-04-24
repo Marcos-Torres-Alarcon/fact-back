@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Types } from 'mongoose'
+import { InvoiceStatus } from '../dto/create-invoice.dto'
+import { Document } from 'mongoose'
 
 export interface InvoiceDocument extends Document {
   correlativo: string
@@ -10,6 +12,9 @@ export interface InvoiceDocument extends Document {
   serie: string
   tipoComprobante: string
   state: string
+  status: InvoiceStatus
+  actaAceptacion?: string
+  pdfFile?: string
 }
 
 export interface GetInvoiceDocument extends InvoiceDocument {
@@ -17,7 +22,7 @@ export interface GetInvoiceDocument extends InvoiceDocument {
 }
 
 @Schema({ timestamps: true })
-export class Invoice {
+export class Invoice extends Document {
   @Prop({ required: true })
   correlativo: string
 
@@ -39,9 +44,17 @@ export class Invoice {
   @Prop({ required: true })
   tipoComprobante: string
 
+  @Prop({ required: true, enum: InvoiceStatus, default: InvoiceStatus.DRAFT })
+  status: InvoiceStatus
+
   @Prop({ required: true })
   state: string
 
+  @Prop()
+  actaAceptacion?: string
+
+  @Prop()
+  pdfFile?: string
 }
 
 export const InvoiceSchema = SchemaFactory.createForClass(Invoice)
