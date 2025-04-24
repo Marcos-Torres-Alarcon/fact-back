@@ -453,10 +453,10 @@ export class InvoiceService {
     // --- ¡ESTO DEPENDE TOTALMENTE DE LA API DE SUNAT! ---
     // Analiza la estructura de 'sunatData' y determina el estado.
     // Ejemplo hipotético:
-    if (sunatData.success === true && sunatData.data?.estadoCp === '1') {
+    if (sunatData.success === true && sunatData.data?.estadoCp === '0') {
       // '1' podría ser ACEPTADO
       return { status: 'VALIDO_ACEPTADO', details: sunatData.data, message: 'El comprobante es válido y fue facturado a esta empresa.' }
-    } else if (sunatData.success === true && sunatData.data?.estadoCp === '0') {
+    } else if (sunatData.success === true && sunatData.data?.estadoCp === '1') {
       // '0' podría ser RECHAZADO o ANULADO
       return { status: 'VALIDO_NO_PERTENECE', details: sunatData.data, message: 'El comprobante es válido, pero no fue facturado a esta empresa.' }
     } else if (sunatData.cod === '98') {
