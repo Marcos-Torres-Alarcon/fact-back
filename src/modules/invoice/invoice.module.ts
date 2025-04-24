@@ -10,10 +10,10 @@ import { HttpModule } from '@nestjs/axios'
   imports: [
     MongooseModule.forFeature([{ name: Invoice.name, schema: InvoiceSchema }]),
     ProjectModule,
-    HttpModule
+    HttpModule,
   ],
   controllers: [InvoiceController],
   providers: [InvoiceService],
   exports: [InvoiceService],
 })
-export class InvoiceModule { }
+export class InvoiceModule {}
