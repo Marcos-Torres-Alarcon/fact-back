@@ -38,7 +38,7 @@ import { FileInterceptor } from '@nestjs/platform-express'
 export class InvoiceController {
   private readonly logger = new Logger(InvoiceController.name)
 
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(private readonly invoiceService: InvoiceService) { }
 
   @Get('token-sunat')
   getToken() {

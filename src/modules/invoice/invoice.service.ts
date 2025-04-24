@@ -24,6 +24,7 @@ interface InvoiceData {
   correlativo?: string
   fechaEmision?: string // Formato YYYY-MM-DD
   montoTotal?: number
+  moneda?: string
   // Otros campos si son necesarios para la API de SUNAT
 }
 
@@ -68,8 +69,6 @@ export class InvoiceService {
   async findAll(): Promise<Invoice[]> {
     return this.invoiceModel
       .find()
-      .populate('clientId')
-      .populate('projectId')
       .exec()
   }
 
@@ -278,12 +277,11 @@ export class InvoiceService {
 
       // Llamada al API de SUNAT solo si tenemos datos extraídos
       if (extractedData) {
-        this.logger.log('Calling SUNAT validation service...')
-        const sunatApiUrl =
-          process.env.SUNAT_API_URL || 'URL_DEL_SERVICIO_SUNAT'
-        const sunatApiKey = process.env.SUNAT_API_KEY
+        this.logger.log('Calling SUNAT validation service...', extractedData)
+        const sunatApiUrl = `https://api.sunat.gob.pe/v1/contribuyente/contribuyentes/10450256451/validarcomprobante`
+        const sunatToken = await this.generateTokenSunat()
 
-        if (!sunatApiUrl || !sunatApiKey) {
+        if (!sunatApiUrl || !sunatToken) {
           this.logger.error('SUNAT API configuration missing')
           throw new HttpException(
             'Configuración de SUNAT incompleta. Contacte al administrador.',
@@ -301,7 +299,7 @@ export class InvoiceService {
         }
 
         const headers = {
-          ApiKey: sunatApiKey,
+          'Authorization': `Bearer ${sunatToken.access_token}`,
           'Content-Type': 'application/json',
         }
 
@@ -311,15 +309,17 @@ export class InvoiceService {
 
         try {
           const response = await firstValueFrom(
-            this.httpService.get(sunatApiUrl, { params, headers })
+            this.httpService.post(sunatApiUrl, params, { headers })
           )
 
-          this.logger.log(`SUNAT response status: ${response.status}`)
-          this.logger.debug(
-            `SUNAT response data: ${JSON.stringify(response.data)}`
-          )
+          this.logger.log(`SUNAT response status: ${response}`)
 
           const validationResult = this.interpretSunatResponse(response.data)
+
+          this.create({
+            ...extractedData,
+            state: validationResult.status,
+          })
 
           return {
             message: 'Validación completada.',
@@ -328,7 +328,8 @@ export class InvoiceService {
             extractedData: extractedData,
           }
         } catch (error) {
-          this.logger.error(`SUNAT API Error: ${error.message}`, error.stack)
+          console.log(error)
+          this.logger.error(`SUNAT API Error: ${error}`, error.stack)
           throw new HttpException(
             'Error en la comunicación con SUNAT. Por favor, intente nuevamente más tarde.',
             HttpStatus.SERVICE_UNAVAILABLE
@@ -397,22 +398,20 @@ export class InvoiceService {
         parseInt(day) >= 1 &&
         parseInt(day) <= 31
       ) {
-        data.fechaEmision = `${year}-${month}-${day}`
+        data.fechaEmision = `${day}/${month}/${year}`
       }
     }
 
-    // Monto Total (Busca "TOTAL", "IMPORTE TOTAL", etc., seguido de un número con decimales)
+    // Monto Total (Busca variantes de "TOTAL" seguido de una moneda y un número con decimales)
+    console.log(text)
     match = text.match(
-      /(?:TOTAL|IMPORTE\s*TOTAL)\s*(?:(?:S\/?\.?|PEN)\s*)?[:\s]*([\d,]+\.\d{2})\b/i
+      /(?:IMPORTE\s*TOTAL|SUMA\s*TOTAL|MONTO\s*TOTAL|VALOR\s*TOTAL)\s*:(?:(S\/|PEN|USD|\$)\s*)?\s*([\d,]+\.\d{2})\b/i
     )
-    if (!match) {
-      // Intenta buscar sólo un número flotante al final o cerca de palabras clave
-      match = text.match(/([\d,]+\.\d{2})\b/i)
-    }
     if (match) {
       // Limpia comas de miles y convierte a número
-      const amountString = match[1].replace(/,/g, '')
+      const amountString = match[2].replace(/,/g, '')
       data.montoTotal = parseFloat(amountString)
+      data.moneda = match[1] || 'S/' // Si no se encuentra moneda, asumimos PEN
     }
 
     this.logger.debug(`Extraction Results: ${JSON.stringify(data)}`)
@@ -447,30 +446,32 @@ export class InvoiceService {
   // Función para interpretar la respuesta específica de SUNAT
   private interpretSunatResponse(sunatData: any): {
     status: string
-    details: any
+    details: any,
+    message: string
   } {
-    this.logger.log('Interpreting SUNAT response...')
+    this.logger.log('Interpreting SUNAT response...', sunatData)
     // --- ¡ESTO DEPENDE TOTALMENTE DE LA API DE SUNAT! ---
     // Analiza la estructura de 'sunatData' y determina el estado.
     // Ejemplo hipotético:
     if (sunatData.success === true && sunatData.data?.estadoCp === '1') {
       // '1' podría ser ACEPTADO
-      return { status: 'VALIDO_ACEPTADO', details: sunatData.data }
+      return { status: 'VALIDO_ACEPTADO', details: sunatData.data, message: 'El comprobante es válido y fue facturado a esta empresa.' }
     } else if (sunatData.success === true && sunatData.data?.estadoCp === '0') {
       // '0' podría ser RECHAZADO o ANULADO
-      return { status: 'VALIDO_RECHAZADO_ANULADO', details: sunatData.data }
+      return { status: 'VALIDO_NO_PERTENECE', details: sunatData.data, message: 'El comprobante es válido, pero no fue facturado a esta empresa.' }
     } else if (sunatData.cod === '98') {
       // Código hipotético para "no encontrado"
       return {
         status: 'NO_ENCONTRADO',
         details: sunatData.msg || 'El comprobante no existe en SUNAT.',
+        message: 'El comprobante no existe en SUNAT.',
       }
     } else {
       // Otros errores o casos
       this.logger.warn(
         `Uninterpretable SUNAT response: ${JSON.stringify(sunatData)}`
       )
-      return { status: 'ERROR_SUNAT', details: sunatData }
+      return { status: 'ERROR_SUNAT', details: sunatData, message: 'Error al validar el comprobante.' }
     }
   }
 }
