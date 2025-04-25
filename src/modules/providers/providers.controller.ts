@@ -70,7 +70,7 @@ export class ProvidersController {
     UserRole.ADMIN,
     UserRole.COMPANY,
     UserRole.PROVIDER,
-    UserRole.MANAGER,
+    UserRole.ACCOUNTING,
     UserRole.TREASURY
   )
   @ApiOperation({ summary: 'Obtener todos los proveedores' })
@@ -81,7 +81,7 @@ export class ProvidersController {
 
     if (
       req.user.role === UserRole.COMPANY ||
-      req.user.role === UserRole.MANAGER ||
+      req.user.role === UserRole.ACCOUNTING ||
       req.user.role === UserRole.TREASURY
     ) {
       if (!req.user.companyId) {

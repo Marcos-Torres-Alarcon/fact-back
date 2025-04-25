@@ -2,7 +2,7 @@ export enum UserRole {
   ADMIN = 'ADMIN',
   COMPANY = 'COMPANY',
   PROVIDER = 'PROVIDER',
-  MANAGER = 'MANAGER',
+  ACCOUNTING = 'ACCOUNTING',
   TREASURY = 'TREASURY',
   USER = 'USER',
 }
@@ -12,7 +12,16 @@ export const UserRoleDescription = {
   ADMIN: 'Administrador del sistema',
   COMPANY: 'Usuario de compañía',
   PROVIDER: 'Proveedor',
-  MANAGER: 'Gerente',
+  ACCOUNTING: 'Contabilidad',
   TREASURY: 'Tesorería',
   USER: 'Usuario básico',
+}
+
+export const UserRoleLabels: Record<UserRole, string> = {
+  [UserRole.ADMIN]: 'Administrador',
+  [UserRole.COMPANY]: 'Empresa',
+  [UserRole.PROVIDER]: 'Proveedor',
+  [UserRole.ACCOUNTING]: 'Contabilidad',
+  [UserRole.TREASURY]: 'Tesorería',
+  [UserRole.USER]: 'Usuario',
 }

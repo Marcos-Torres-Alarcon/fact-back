@@ -130,11 +130,15 @@ export class InvoiceService {
     return updatedInvoice
   }
 
-  async updateStatus(id: string, status: InvoiceStatus): Promise<Invoice> {
+  async updateStatus(
+    id: string,
+    status: InvoiceStatus,
+    approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'
+  ): Promise<Invoice> {
     this.logger.debug(`Actualizando estado de factura ${id} a ${status}`)
 
     try {
-      const updateData = { status }
+      const updateData = { status, ...(approvalStatus && { approvalStatus }) }
       const updatedInvoice = await this.invoiceModel
         .findByIdAndUpdate(id, updateData, { new: true })
         .populate('clientId', 'name ruc')

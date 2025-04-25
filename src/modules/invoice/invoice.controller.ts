@@ -132,7 +132,7 @@ export class InvoiceController {
     UserRole.PROVIDER,
     UserRole.USER,
     UserRole.COMPANY,
-    UserRole.MANAGER,
+    UserRole.ACCOUNTING,
     UserRole.TREASURY
   )
   @ApiOperation({ summary: 'Obtener todas las facturas' })
@@ -218,7 +218,7 @@ export class InvoiceController {
   }
 
   @Patch(':id/status')
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.ACCOUNTING)
   @ApiOperation({ summary: 'Actualizar el estado de una factura' })
   @ApiParam({ name: 'id', description: 'ID de la factura' })
   @ApiResponse({
