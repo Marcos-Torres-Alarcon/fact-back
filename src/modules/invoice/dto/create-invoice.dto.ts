@@ -65,17 +65,17 @@ export class CreateInvoiceDto {
     description: 'ID del cliente',
     example: '507f1f77bcf86cd799439011',
   })
+  @IsOptional()
   @IsMongoId()
-  @IsNotEmpty()
-  clientId: string
+  clientId?: string
 
   @ApiProperty({
     description: 'ID del proyecto',
     example: '507f1f77bcf86cd799439012',
   })
+  @IsOptional()
   @IsMongoId()
-  @IsNotEmpty()
-  projectId: string
+  projectId?: string
 
   @ApiProperty({
     description: 'Número de factura',
@@ -158,9 +158,9 @@ export class CreateInvoiceDto {
     enum: InvoiceStatus,
     example: InvoiceStatus.PENDING,
   })
-  @IsEnum(InvoiceStatus)
-  @IsNotEmpty()
-  status: InvoiceStatus
+  @IsEnum(['PENDING', 'APPROVED', 'REJECTED'])
+  @IsOptional()
+  status?: string
 
   @ApiProperty({
     description: 'Notas adicionales sobre la factura',

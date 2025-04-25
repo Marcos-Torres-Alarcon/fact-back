@@ -46,8 +46,12 @@ export class Invoice extends Document {
   @Prop({ required: true })
   tipoComprobante: string
 
-  @Prop({ required: true, enum: InvoiceStatus, default: InvoiceStatus.PENDING })
-  status: InvoiceStatus
+  @Prop({
+    required: true,
+    enum: ['PENDING', 'APPROVED', 'REJECTED'],
+    default: 'PENDING',
+  })
+  status: string
 
   @Prop({ required: true })
   state: string
@@ -58,11 +62,25 @@ export class Invoice extends Document {
   @Prop()
   pdfFile?: string
 
-  @Prop({ type: Types.ObjectId, ref: 'Client', required: true })
-  clientId: Types.ObjectId
+  @Prop({ type: Types.ObjectId, ref: 'Client', required: false })
+  clientId?: Types.ObjectId
 
-  @Prop({ type: Types.ObjectId, ref: 'Project', required: true })
-  projectId: Types.ObjectId
+  @Prop({ type: Types.ObjectId, ref: 'Project', required: false })
+  projectId?: Types.ObjectId
 }
 
 export const InvoiceSchema = SchemaFactory.createForClass(Invoice)
+
+export interface Invoice {
+  _id: string
+  providerName: string
+  invoiceNumber: string
+  date: Date
+  type: string
+  status: string
+  rejectionReason?: string
+  createdAt: Date
+  pdfUrl?: string
+  xmlUrl?: string
+  actaUrl?: string
+}

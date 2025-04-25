@@ -16,6 +16,10 @@ import * as pdfParse from 'pdf-parse'
 import * as fs from 'fs'
 import * as path from 'path'
 import { firstValueFrom } from 'rxjs'
+import { EmailService } from '../email/email.service'
+import { UserService } from '../user/user.service'
+import { UserRole } from '../auth/enums/user-role.enum'
+import { ClientService } from '../client/client.service'
 
 interface InvoiceData {
   rucEmisor?: string
@@ -35,8 +39,11 @@ export class InvoiceService {
 
   constructor(
     @InjectModel(Invoice.name)
-    private invoiceModel: Model<InvoiceDocument>,
-    private readonly httpService: HttpService
+    private invoiceModel: Model<Invoice>,
+    private readonly httpService: HttpService,
+    private readonly emailService: EmailService,
+    private readonly userService: UserService,
+    private readonly clientService: ClientService
   ) {
     // Asegurarse de que el directorio temporal existe y tiene permisos
     try {
@@ -61,9 +68,32 @@ export class InvoiceService {
   async create(createInvoiceDto: CreateInvoiceDto): Promise<Invoice> {
     const createdInvoice = new this.invoiceModel({
       ...createInvoiceDto,
-      status: createInvoiceDto.status || InvoiceStatus.PENDING,
+      status: 'PENDING',
     })
-    return createdInvoice.save()
+    const savedInvoice = await createdInvoice.save()
+
+    // Obtener usuarios con roles específicos
+    const users = await this.userService.findAll({ role: UserRole.ADMIN })
+    const usersToNotify = users.filter(
+      u => u.role === UserRole.ACCOUNTING || u.role === UserRole.COMPANY
+    )
+
+    // Enviar notificación a cada usuario
+    for (const user of usersToNotify) {
+      try {
+        await this.sendInvoiceUploadedNotification(
+          user.email,
+          `${savedInvoice.serie}-${savedInvoice.correlativo}`,
+          'Proveedor'
+        )
+      } catch (error) {
+        this.logger.error(
+          `Error al enviar notificación a ${user.email}: ${error.message}`
+        )
+      }
+    }
+
+    return savedInvoice
   }
 
   async findAll(): Promise<Invoice[]> {
@@ -133,30 +163,105 @@ export class InvoiceService {
   async updateStatus(
     id: string,
     status: InvoiceStatus,
-    approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'
+    reason?: string
   ): Promise<Invoice> {
-    this.logger.debug(`Actualizando estado de factura ${id} a ${status}`)
-
     try {
-      const updateData = { status, ...(approvalStatus && { approvalStatus }) }
-      const updatedInvoice = await this.invoiceModel
-        .findByIdAndUpdate(id, updateData, { new: true })
-        .populate('clientId', 'name ruc')
-        .populate('projectId', 'name code')
-        .exec()
+      this.logger.debug(
+        `[DEBUG] Iniciando actualización de estado de factura ${id} a ${status}`
+      )
 
-      if (!updatedInvoice) {
+      const invoice = await this.invoiceModel.findById(id)
+      if (!invoice) {
         this.logger.error(`Factura con ID ${id} no encontrada`)
         throw new NotFoundException(`Factura con ID ${id} no encontrada`)
       }
 
+      invoice.status = status
+      invoice.rejectionReason = reason
+      invoice.date = new Date()
+      const updatedInvoice = await invoice.save()
+
       this.logger.debug(
-        `Estado de factura ${id} actualizado exitosamente a ${status}`
+        `[DEBUG] Factura actualizada: ${JSON.stringify(
+          {
+            id: updatedInvoice._id,
+            status: updatedInvoice.status,
+            providerName: updatedInvoice.providerName,
+            invoiceNumber: updatedInvoice.invoiceNumber,
+            date: updatedInvoice.date,
+          },
+          null,
+          2
+        )}`
+      )
+
+      // Obtener usuarios con rol de tesorería activos
+      this.logger.debug('[DEBUG] Buscando usuarios de tesorería activos...')
+      const treasuryUsers = await this.userService.findByRoleAndStatus(
+        UserRole.TREASURY
+      )
+
+      this.logger.debug(
+        `[DEBUG] Usuarios de tesorería encontrados: ${treasuryUsers.length}`
+      )
+
+      if (treasuryUsers.length === 0) {
+        this.logger.warn(
+          '[DEBUG] No se encontraron usuarios de tesorería activos'
+        )
+        return updatedInvoice
+      }
+
+      // Enviar notificación solo a usuarios de tesorería
+      for (const user of treasuryUsers) {
+        try {
+          this.logger.debug(
+            `[DEBUG] Intentando enviar notificación a usuario de tesorería: ${user.email}`
+          )
+
+          const notificationData = {
+            providerName:
+              updatedInvoice.rucEmisor || 'Proveedor no especificado',
+            invoiceNumber:
+              `${updatedInvoice.serie}-${updatedInvoice.correlativo}` ||
+              'Número no especificado',
+            date: updatedInvoice.fechaEmision || new Date().toISOString(),
+            type: updatedInvoice.tipoComprobante || 'Factura',
+            status:
+              status === InvoiceStatus.APPROVED
+                ? ('APPROVED' as const)
+                : ('REJECTED' as const),
+            rejectionReason: reason,
+          }
+
+          this.logger.debug(
+            `[DEBUG] Datos de notificación: ${JSON.stringify(notificationData, null, 2)}`
+          )
+
+          await this.emailService.sendInvoiceDecisionNotification(
+            user.email,
+            notificationData
+          )
+
+          this.logger.debug(
+            `[DEBUG] Notificación enviada exitosamente a ${user.email}`
+          )
+        } catch (error) {
+          this.logger.error(
+            `[DEBUG] Error al enviar notificación a ${user.email}: ${error.message}`,
+            error.stack
+          )
+        }
+      }
+
+      this.logger.debug(
+        `[DEBUG] Proceso de actualización de estado completado para factura ${id}`
       )
       return updatedInvoice
     } catch (error) {
       this.logger.error(
-        `Error al actualizar estado de factura ${id}: ${error.message}`
+        `[DEBUG] Error al actualizar estado de factura ${id}: ${error.message}`,
+        error.stack
       )
       if (error instanceof NotFoundException) {
         throw error
@@ -176,8 +281,11 @@ export class InvoiceService {
 
     // Convertir el buffer a base64 para almacenamiento
     const base64File = fileBuffer.toString('base64')
-    invoice.actaAceptacion = base64File
-    return invoice.save()
+    return this.invoiceModel.findByIdAndUpdate(
+      id,
+      { actaAceptacion: base64File },
+      { new: true }
+    )
   }
 
   async downloadActaAceptacion(
@@ -545,6 +653,212 @@ export class InvoiceService {
         details: sunatData,
         message: 'Error al validar el comprobante.',
       }
+    }
+  }
+
+  async sendInvoiceUploadedNotification(
+    email: string,
+    invoiceNumber: string,
+    providerName: string
+  ) {
+    try {
+      this.logger.debug(`Enviando notificación de factura subida a ${email}`)
+      await this.emailService.sendInvoiceNotification(email, {
+        providerName,
+        invoiceNumber,
+        date: new Date().toISOString(),
+        type: 'pdf',
+      })
+      this.logger.debug(
+        `Notificación de factura subida enviada exitosamente a ${email}`
+      )
+      return { success: true, message: 'Notificación enviada exitosamente' }
+    } catch (error) {
+      this.logger.error(`Error al enviar notificación a ${email}:`, error)
+      throw new HttpException(
+        {
+          message: 'Error al enviar notificación',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
+  }
+
+  async uploadInvoiceAndActa(files: Express.Multer.File[], user: any) {
+    if (!files || files.length !== 2) {
+      throw new HttpException(
+        'Debe subir exactamente dos archivos: la factura y el acta de aceptación',
+        HttpStatus.BAD_REQUEST
+      )
+    }
+
+    try {
+      // El primer archivo es la factura, el segundo es el acta
+      const [invoiceFile, actaFile] = files
+
+      // Validar la factura
+      const validationResult = await this.validateInvoiceFromImage(
+        invoiceFile.buffer,
+        invoiceFile.mimetype
+      )
+
+      // Crear la factura
+      const invoice = await this.create({
+        ...validationResult,
+        status: 'PENDING',
+      })
+
+      // Enviar notificación de factura subida
+      await this.sendInvoiceUploadedNotification(
+        user.email,
+        validationResult.invoiceNumber,
+        `${user.firstName} ${user.lastName}`
+      )
+
+      // Subir el acta
+      await this.uploadActaAceptacion(invoice._id.toString(), actaFile.buffer)
+
+      // Enviar notificación de acta subida
+      await this.sendActaUploadedNotification(
+        user.email,
+        validationResult.invoiceNumber,
+        `${user.firstName} ${user.lastName}`
+      )
+
+      return {
+        success: true,
+        message: 'Archivos subidos exitosamente',
+        data: invoice,
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error al subir archivos: ${error.message}`,
+        error.stack
+      )
+      throw error
+    }
+  }
+
+  async sendActaUploadedNotification(
+    email: string,
+    invoiceNumber: string,
+    providerName: string
+  ) {
+    try {
+      this.logger.debug(`Enviando notificación de acta subida a ${email}`)
+      await this.emailService.sendActaNotification(email, {
+        providerName,
+        invoiceNumber,
+        date: new Date().toISOString(),
+      })
+      this.logger.debug(
+        `Notificación de acta subida enviada exitosamente a ${email}`
+      )
+      return { success: true, message: 'Notificación enviada exitosamente' }
+    } catch (error) {
+      this.logger.error(`Error al enviar notificación a ${email}:`, error)
+      throw new HttpException(
+        {
+          message: 'Error al enviar notificación',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
+  }
+
+  async rejectInvoice(
+    invoiceId: string,
+    rejectionReason: string
+  ): Promise<Invoice> {
+    try {
+      this.logger.debug(
+        `[DEBUG] Iniciando rechazo de factura ${invoiceId} con razón: ${rejectionReason}`
+      )
+
+      const invoice = await this.invoiceModel.findById(invoiceId)
+      if (!invoice) {
+        this.logger.error(`[DEBUG] Factura con ID ${invoiceId} no encontrada`)
+        throw new NotFoundException(`Factura con ID ${invoiceId} no encontrada`)
+      }
+
+      this.logger.debug(
+        `[DEBUG] Factura encontrada: ${JSON.stringify(
+          {
+            id: invoice._id,
+            status: invoice.status,
+            providerName: invoice.providerName,
+            invoiceNumber: invoice.invoiceNumber,
+          },
+          null,
+          2
+        )}`
+      )
+
+      invoice.status = InvoiceStatus.REJECTED
+      invoice.rejectionReason = rejectionReason
+      await invoice.save()
+
+      this.logger.debug('[DEBUG] Factura actualizada con estado REJECTED')
+
+      // Obtener usuarios con rol de tesorería activos
+      this.logger.debug('[DEBUG] Buscando usuarios de tesorería activos...')
+      const treasuryUsers = await this.userService.findByRoleAndStatus(
+        UserRole.TREASURY
+      )
+
+      this.logger.debug(
+        `[DEBUG] Usuarios de tesorería encontrados: ${treasuryUsers.length}`
+      )
+
+      if (treasuryUsers.length === 0) {
+        this.logger.warn(
+          '[DEBUG] No se encontraron usuarios de tesorería activos'
+        )
+        return invoice
+      }
+
+      // Enviar notificación a todos los usuarios de tesorería
+      for (const user of treasuryUsers) {
+        try {
+          this.logger.debug(
+            `[DEBUG] Intentando enviar notificación de rechazo a: ${user.email}`
+          )
+          await this.emailService.sendInvoiceRejectedNotification(user.email, {
+            providerName: invoice.providerName,
+            invoiceNumber: invoice.invoiceNumber,
+            date: invoice.date.toISOString(),
+            type: invoice.type,
+            rejectionReason,
+          })
+          this.logger.debug(
+            `[DEBUG] Notificación de rechazo enviada exitosamente a ${user.email}`
+          )
+        } catch (error) {
+          this.logger.error(
+            `[DEBUG] Error al enviar notificación a ${user.email}: ${error.message}`,
+            error.stack
+          )
+        }
+      }
+
+      this.logger.debug(
+        `[DEBUG] Proceso de rechazo completado para factura ${invoiceId}`
+      )
+      return invoice
+    } catch (error) {
+      this.logger.error(
+        `[DEBUG] Error al rechazar factura ${invoiceId}: ${error.message}`,
+        error.stack
+      )
+      if (error instanceof NotFoundException) {
+        throw error
+      }
+      throw new HttpException(
+        'Error al rechazar la factura',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
     }
   }
 }

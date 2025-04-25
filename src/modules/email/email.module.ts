@@ -1,35 +1,56 @@
-import { Module } from '@nestjs/common';
-import { EmailService } from './email.service';
-import { EmailController } from './email.controller';
-import { MailerModule } from '@nestjs-modules/mailer';
-import { join } from 'path';
-import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { Module, Logger } from '@nestjs/common'
+import { EmailService } from './email.service'
+import { EmailController } from './email.controller'
+import { MailerModule } from '@nestjs-modules/mailer'
+import { join } from 'path'
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter'
+
+const logger = new Logger('EmailModule')
 
 @Module({
   imports: [
-    MailerModule.forRoot({
-      transport: {
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false,
-        auth: {
-          user: process.env.USER_EMAIL,
-          pass: process.env.PASSWORD_EMAIL,
-        },
-      },
-      defaults: {
-        from: '"Soporte" <eventuz.peru@gmail.com>',
-      },
-      template: {
-        dir: join(__dirname, 'templates'),
-        adapter: new HandlebarsAdapter(),
-        options: {
-          strict: true,
-        },
+    MailerModule.forRootAsync({
+      useFactory: () => {
+        const config = {
+          transport: {
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false,
+            auth: {
+              user: process.env.USER_EMAIL,
+              pass: process.env.PASSWORD_EMAIL,
+            },
+          },
+          defaults: {
+            from: process.env.USER_EMAIL,
+          },
+          template: {
+            dir: join(process.cwd(), 'src/modules/email/templates'),
+            adapter: new HandlebarsAdapter(),
+            options: {
+              strict: true,
+            },
+          },
+        }
+
+        // Log de la configuración (sin la contraseña)
+        logger.debug('Configuración de correo:', {
+          ...config,
+          transport: {
+            ...config.transport,
+            auth: {
+              user: config.transport.auth.user,
+              pass: config.transport.auth.pass ? '***' : undefined,
+            },
+          },
+        })
+
+        return config
       },
     }),
   ],
   controllers: [EmailController],
   providers: [EmailService],
+  exports: [EmailService],
 })
-export class EmailModule { }
+export class EmailModule {}

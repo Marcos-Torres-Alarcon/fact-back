@@ -14,6 +14,9 @@ import {
   UploadedFile,
   HttpException,
   Res,
+  UploadedFiles,
+  Req,
+  Put,
 } from '@nestjs/common'
 import { InvoiceService } from './invoice.service'
 import { CreateInvoiceDto, InvoiceStatus } from './dto/create-invoice.dto'
@@ -24,14 +27,16 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiConsumes,
 } from '@nestjs/swagger'
 import { Invoice } from './entities/invoice.entity'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../auth/guards/roles.guard'
 import { Roles } from '../auth/decorators/roles.decorator'
 import { UserRole } from '../auth/enums/user-role.enum'
-import { FileInterceptor } from '@nestjs/platform-express'
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express'
 import { Response } from 'express'
+import { EmailService } from '../email/email.service'
 
 @ApiTags('invoices')
 @Controller('invoices')
@@ -40,7 +45,10 @@ import { Response } from 'express'
 export class InvoiceController {
   private readonly logger = new Logger(InvoiceController.name)
 
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly emailService: EmailService
+  ) {}
 
   @Get('token-sunat')
   getToken() {
@@ -146,7 +154,7 @@ export class InvoiceController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
+  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER, UserRole.ACCOUNTING)
   @ApiOperation({ summary: 'Obtener una factura por ID' })
   @ApiParam({ name: 'id', description: 'ID de la factura' })
   @ApiResponse({
@@ -217,50 +225,15 @@ export class InvoiceController {
     return this.invoiceService.update(id, updateInvoiceDto)
   }
 
-  @Patch(':id/status')
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.ACCOUNTING)
-  @ApiOperation({ summary: 'Actualizar el estado de una factura' })
-  @ApiParam({ name: 'id', description: 'ID de la factura' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Estado de la factura actualizado exitosamente',
-    type: Invoice,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Factura no encontrada',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Estado de factura inválido',
-  })
+  @Put(':id/status')
+  @Roles(UserRole.ACCOUNTING)
+  @ApiOperation({ summary: 'Actualizar estado de una factura' })
+  @ApiResponse({ status: 200, description: 'Estado actualizado exitosamente' })
   async updateStatus(
     @Param('id') id: string,
-    @Body()
-    body: {
-      status: InvoiceStatus
-    }
-  ): Promise<Invoice> {
-    this.logger.debug(
-      `Recibida solicitud para actualizar estado de factura ${id} a ${body.status}`
-    )
-
-    try {
-      const result = await this.invoiceService.updateStatus(id, body.status)
-      this.logger.debug(`Estado de factura ${id} actualizado exitosamente`)
-      return result
-    } catch (error) {
-      this.logger.error(
-        `Error al actualizar estado de factura ${id}: ${error.message}`
-      )
-      if (error instanceof HttpException) {
-        throw error
-      }
-      throw new HttpException(
-        'Error al actualizar el estado de la factura',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    }
+    @Body() body: { status: InvoiceStatus; reason?: string }
+  ) {
+    return this.invoiceService.updateStatus(id, body.status, body.reason)
   }
 
   @Delete(':id')
@@ -359,5 +332,46 @@ export class InvoiceController {
       `inline; filename=factura-${invoice.serie}-${invoice.correlativo}.pdf`
     )
     res.send(buffer)
+  }
+
+  @Post('upload')
+  @UseInterceptors(FilesInterceptor('files', 2))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Subir factura y acta de aceptación' })
+  @ApiResponse({ status: 201, description: 'Archivos subidos exitosamente' })
+  async uploadInvoiceAndActa(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Req() req: any
+  ) {
+    try {
+      this.logger.debug('Iniciando subida de factura y acta')
+      const result = await this.invoiceService.uploadInvoiceAndActa(
+        files,
+        req.user
+      )
+      this.logger.debug('Archivos subidos exitosamente')
+      return {
+        success: true,
+        message: 'Archivos subidos exitosamente',
+        data: result,
+      }
+    } catch (error) {
+      this.logger.error('Error al subir archivos:', error)
+      throw new HttpException(
+        {
+          message: 'Error al subir archivos',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
+  }
+
+  @Put(':id/reject')
+  async rejectInvoice(
+    @Param('id') id: string,
+    @Body() body: { rejectionReason: string }
+  ) {
+    return this.invoiceService.rejectInvoice(id, body.rejectionReason)
   }
 }

@@ -14,6 +14,8 @@ import { InvoiceModule } from './modules/invoice/invoice.module'
 import { PaymentModule } from './modules/payment/payment.module'
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module'
 import { ProvidersModule } from './modules/providers/providers.module'
+import { EmailModule } from './modules/email/email.module'
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -31,8 +33,9 @@ import { ProvidersModule } from './modules/providers/providers.module'
     PaymentModule,
     PurchaseOrderModule,
     ProvidersModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

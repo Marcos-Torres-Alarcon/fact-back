@@ -29,6 +29,7 @@ import { RolesGuard } from '../auth/guards/roles.guard'
 import { Roles } from '../auth/decorators/roles.decorator'
 import { UserRole } from '../auth/enums/user-role.enum'
 import { Request as ExpressRequest } from 'express'
+import { UserDocument } from './entities/user.entity'
 
 @ApiTags('users')
 @Controller('users')
@@ -162,7 +163,7 @@ export class UserController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY)
   @ApiOperation({ summary: 'Actualizar un usuario' })
   @ApiResponse({
     status: 200,
@@ -174,8 +175,8 @@ export class UserController {
   async update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
-    @Req() req: ExpressRequest
-  ): Promise<User> {
+    @Req() req: ExpressRequest & { user: UserDocument }
+  ): Promise<UserDocument> {
     try {
       this.logger.log(`Recibida solicitud para actualizar usuario: ${id}`)
       const user = await this.userService.update(id, updateUserDto, req.user)
@@ -260,7 +261,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY)
   @ApiOperation({ summary: 'Eliminar un usuario' })
   @ApiResponse({
     status: 200,
@@ -268,10 +269,13 @@ export class UserController {
   })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiResponse({ status: 500, description: 'Error interno del servidor' })
-  async delete(@Param('id') id: string): Promise<void> {
+  async delete(
+    @Param('id') id: string,
+    @Req() req: ExpressRequest
+  ): Promise<void> {
     try {
       this.logger.log(`Recibida solicitud para eliminar usuario: ${id}`)
-      await this.userService.delete(id)
+      await this.userService.remove(id, req.user)
       this.logger.log(`Usuario eliminado exitosamente: ${id}`)
     } catch (error) {
       this.logger.error(
