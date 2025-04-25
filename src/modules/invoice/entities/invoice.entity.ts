@@ -53,6 +53,13 @@ export class Invoice extends Document {
   })
   status: string
 
+  @Prop({
+    required: true,
+    enum: ['PENDING', 'APPROVED', 'REJECTED'],
+    default: 'PENDING',
+  })
+  paymentStatus: string
+
   @Prop({ required: true })
   state: string
 

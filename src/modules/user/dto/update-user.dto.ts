@@ -1,4 +1,10 @@
-import { IsString, IsEmail, IsOptional, IsBoolean, IsEnum } from 'class-validator'
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+} from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 import { UserRole } from '../../auth/enums/user-role.enum'
 

@@ -250,7 +250,7 @@ export class EmailService {
 
       await this.mailerService.sendMail({
         to: email,
-        subject: `Factura ${data.status === 'APPROVED' ? 'Aprobada' : 'Rechazada'}`,
+        subject: `Factura ${data.status === 'APPROVED' ? 'Aprobada para Pago' : 'Rechazada para Pago'}`,
         template: 'invoice-decision',
         context: {
           providerName: data.providerName,

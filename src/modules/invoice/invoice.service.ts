@@ -861,4 +861,76 @@ export class InvoiceService {
       )
     }
   }
+
+  async updatePaymentStatus(
+    id: string,
+    status: 'APPROVED' | 'REJECTED'
+  ): Promise<Invoice> {
+    try {
+      this.logger.debug(
+        `[DEBUG] Iniciando actualización de estado de pago de factura ${id} a ${status}`
+      )
+
+      const invoice = await this.invoiceModel.findById(id)
+      if (!invoice) {
+        this.logger.error(`Factura con ID ${id} no encontrada`)
+        throw new NotFoundException(`Factura con ID ${id} no encontrada`)
+      }
+
+      invoice.paymentStatus = status
+      const updatedInvoice = await invoice.save()
+
+      this.logger.debug(
+        `[DEBUG] Estado de pago actualizado: ${JSON.stringify(
+          {
+            id: updatedInvoice._id,
+            paymentStatus: updatedInvoice.paymentStatus,
+            providerName: updatedInvoice.providerName,
+            invoiceNumber: updatedInvoice.invoiceNumber,
+          },
+          null,
+          2
+        )}`
+      )
+
+      // Obtener todos los proveedores activos
+      const providers = await this.userService.findByRoleAndStatus(
+        UserRole.PROVIDER
+      )
+
+      // Enviar notificación a todos los proveedores
+      for (const provider of providers) {
+        try {
+          await this.emailService.sendInvoiceDecisionNotification(
+            provider.email,
+            {
+              providerName: updatedInvoice.rucEmisor,
+              invoiceNumber: `${updatedInvoice.serie}-${updatedInvoice.correlativo}`,
+              date: updatedInvoice.fechaEmision,
+              type: updatedInvoice.tipoComprobante,
+              status: status,
+            }
+          )
+          this.logger.debug(
+            `[DEBUG] Notificación enviada exitosamente a ${provider.email}`
+          )
+        } catch (error) {
+          this.logger.error(
+            `[DEBUG] Error al enviar notificación a ${provider.email}: ${error.message}`,
+            error.stack
+          )
+        }
+      }
+
+      return updatedInvoice
+    } catch (error) {
+      this.logger.error(
+        `Error al actualizar estado de pago de factura ${id}: ${error.message}`
+      )
+      throw new HttpException(
+        error.message,
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
+  }
 }

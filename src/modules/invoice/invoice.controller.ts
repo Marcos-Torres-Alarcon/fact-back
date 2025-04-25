@@ -374,4 +374,18 @@ export class InvoiceController {
   ) {
     return this.invoiceService.rejectInvoice(id, body.rejectionReason)
   }
+
+  @Put(':id/payment-status')
+  @Roles(UserRole.TREASURY)
+  @ApiOperation({ summary: 'Actualizar estado de pago de una factura' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estado de pago actualizado exitosamente',
+  })
+  async updatePaymentStatus(
+    @Param('id') id: string,
+    @Body() body: { status: 'APPROVED' | 'REJECTED' }
+  ) {
+    return this.invoiceService.updatePaymentStatus(id, body.status)
+  }
 }
