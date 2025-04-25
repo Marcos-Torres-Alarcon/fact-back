@@ -15,6 +15,8 @@ export interface InvoiceDocument extends Document {
   status: InvoiceStatus
   actaAceptacion?: string
   pdfFile?: string
+  clientId: Types.ObjectId
+  projectId: Types.ObjectId
 }
 
 export interface GetInvoiceDocument extends InvoiceDocument {
@@ -44,7 +46,7 @@ export class Invoice extends Document {
   @Prop({ required: true })
   tipoComprobante: string
 
-  @Prop({ required: true, enum: InvoiceStatus, default: InvoiceStatus.DRAFT })
+  @Prop({ required: true, enum: InvoiceStatus, default: InvoiceStatus.PENDING })
   status: InvoiceStatus
 
   @Prop({ required: true })
@@ -55,6 +57,12 @@ export class Invoice extends Document {
 
   @Prop()
   pdfFile?: string
+
+  @Prop({ type: Types.ObjectId, ref: 'Client', required: true })
+  clientId: Types.ObjectId
+
+  @Prop({ type: Types.ObjectId, ref: 'Project', required: true })
+  projectId: Types.ObjectId
 }
 
 export const InvoiceSchema = SchemaFactory.createForClass(Invoice)

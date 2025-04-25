@@ -61,7 +61,7 @@ export class InvoiceService {
   async create(createInvoiceDto: CreateInvoiceDto): Promise<Invoice> {
     const createdInvoice = new this.invoiceModel({
       ...createInvoiceDto,
-      status: createInvoiceDto.status || InvoiceStatus.DRAFT,
+      status: createInvoiceDto.status || InvoiceStatus.PENDING,
     })
     return createdInvoice.save()
   }
@@ -131,16 +131,37 @@ export class InvoiceService {
   }
 
   async updateStatus(id: string, status: InvoiceStatus): Promise<Invoice> {
-    const updatedInvoice = await this.invoiceModel
-      .findByIdAndUpdate(id, { status }, { new: true })
-      .populate('clientId')
-      .populate('projectId')
-      .exec()
+    this.logger.debug(`Actualizando estado de factura ${id} a ${status}`)
 
-    if (!updatedInvoice) {
-      throw new NotFoundException(`Factura con ID ${id} no encontrada`)
+    try {
+      const updateData = { status }
+      const updatedInvoice = await this.invoiceModel
+        .findByIdAndUpdate(id, updateData, { new: true })
+        .populate('clientId', 'name ruc')
+        .populate('projectId', 'name code')
+        .exec()
+
+      if (!updatedInvoice) {
+        this.logger.error(`Factura con ID ${id} no encontrada`)
+        throw new NotFoundException(`Factura con ID ${id} no encontrada`)
+      }
+
+      this.logger.debug(
+        `Estado de factura ${id} actualizado exitosamente a ${status}`
+      )
+      return updatedInvoice
+    } catch (error) {
+      this.logger.error(
+        `Error al actualizar estado de factura ${id}: ${error.message}`
+      )
+      if (error instanceof NotFoundException) {
+        throw error
+      }
+      throw new HttpException(
+        'Error al actualizar el estado de la factura',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
     }
-    return updatedInvoice
   }
 
   async uploadActaAceptacion(id: string, fileBuffer: Buffer): Promise<Invoice> {

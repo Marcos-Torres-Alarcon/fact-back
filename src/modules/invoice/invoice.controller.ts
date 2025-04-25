@@ -218,7 +218,7 @@ export class InvoiceController {
   }
 
   @Patch(':id/status')
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER)
+  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Actualizar el estado de una factura' })
   @ApiParam({ name: 'id', description: 'ID de la factura' })
   @ApiResponse({
@@ -234,11 +234,33 @@ export class InvoiceController {
     status: HttpStatus.BAD_REQUEST,
     description: 'Estado de factura inválido',
   })
-  updateStatus(
+  async updateStatus(
     @Param('id') id: string,
-    @Body('status') status: InvoiceStatus
+    @Body()
+    body: {
+      status: InvoiceStatus
+    }
   ): Promise<Invoice> {
-    return this.invoiceService.updateStatus(id, status)
+    this.logger.debug(
+      `Recibida solicitud para actualizar estado de factura ${id} a ${body.status}`
+    )
+
+    try {
+      const result = await this.invoiceService.updateStatus(id, body.status)
+      this.logger.debug(`Estado de factura ${id} actualizado exitosamente`)
+      return result
+    } catch (error) {
+      this.logger.error(
+        `Error al actualizar estado de factura ${id}: ${error.message}`
+      )
+      if (error instanceof HttpException) {
+        throw error
+      }
+      throw new HttpException(
+        'Error al actualizar el estado de la factura',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
   }
 
   @Delete(':id')

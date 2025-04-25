@@ -15,11 +15,9 @@ import { Type } from 'class-transformer'
 import { ApiProperty } from '@nestjs/swagger'
 
 export enum InvoiceStatus {
-  DRAFT = 'DRAFT',
   PENDING = 'PENDING',
-  PAID = 'PAID',
-  OVERDUE = 'OVERDUE',
-  CANCELLED = 'CANCELLED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 export class InvoiceItemDto {
