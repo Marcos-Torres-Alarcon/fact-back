@@ -788,8 +788,8 @@ export class InvoiceService {
           {
             id: invoice._id,
             status: invoice.status,
-            providerName: invoice.providerName,
-            invoiceNumber: invoice.invoiceNumber,
+            providerName: invoice.rucEmisor,
+            invoiceNumber: `${invoice.serie}-${invoice.correlativo}`,
           },
           null,
           2
@@ -802,42 +802,41 @@ export class InvoiceService {
 
       this.logger.debug('[DEBUG] Factura actualizada con estado REJECTED')
 
-      // Obtener usuarios con rol de tesorería activos
-      this.logger.debug('[DEBUG] Buscando usuarios de tesorería activos...')
-      const treasuryUsers = await this.userService.findByRoleAndStatus(
-        UserRole.TREASURY
+      // Obtener usuarios con rol de proveedor
+      this.logger.debug('[DEBUG] Buscando usuarios proveedores...')
+      const providers = await this.userService.findByRoleAndStatus(
+        UserRole.PROVIDER
       )
 
-      this.logger.debug(
-        `[DEBUG] Usuarios de tesorería encontrados: ${treasuryUsers.length}`
-      )
+      this.logger.debug(`[DEBUG] Proveedores encontrados: ${providers.length}`)
 
-      if (treasuryUsers.length === 0) {
-        this.logger.warn(
-          '[DEBUG] No se encontraron usuarios de tesorería activos'
-        )
+      if (providers.length === 0) {
+        this.logger.warn('[DEBUG] No se encontraron proveedores activos')
         return invoice
       }
 
-      // Enviar notificación a todos los usuarios de tesorería
-      for (const user of treasuryUsers) {
+      // Enviar notificación a los proveedores
+      for (const provider of providers) {
         try {
           this.logger.debug(
-            `[DEBUG] Intentando enviar notificación de rechazo a: ${user.email}`
+            `[DEBUG] Intentando enviar notificación de rechazo a: ${provider.email}`
           )
-          await this.emailService.sendInvoiceRejectedNotification(user.email, {
-            providerName: invoice.providerName,
-            invoiceNumber: invoice.invoiceNumber,
-            date: invoice.date.toISOString(),
-            type: invoice.type,
-            rejectionReason,
-          })
+          await this.emailService.sendInvoiceRejectedNotification(
+            provider.email,
+            {
+              providerName: invoice.rucEmisor,
+              invoiceNumber: `${invoice.serie}-${invoice.correlativo}`,
+              date: invoice.fechaEmision,
+              type: invoice.tipoComprobante,
+              rejectionReason,
+            }
+          )
           this.logger.debug(
-            `[DEBUG] Notificación de rechazo enviada exitosamente a ${user.email}`
+            `[DEBUG] Notificación de rechazo enviada exitosamente a ${provider.email}`
           )
         } catch (error) {
           this.logger.error(
-            `[DEBUG] Error al enviar notificación a ${user.email}: ${error.message}`,
+            `[DEBUG] Error al enviar notificación a ${provider.email}: ${error.message}`,
             error.stack
           )
         }
