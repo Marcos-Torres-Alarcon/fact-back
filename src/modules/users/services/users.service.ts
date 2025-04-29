@@ -12,12 +12,18 @@ import { CreateUserDto } from '../dto/create-user.dto'
 import { UpdateUserDto } from '../dto/update-user.dto'
 import * as bcrypt from 'bcrypt'
 import { UserRole } from '../../auth/enums/user-role.enum'
+import { EmailService } from '../../email/email.service'
+import { ConfigService } from '@nestjs/config'
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name)
 
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService
+  ) {}
 
   async create(createUserDto: CreateUserDto): Promise<UserDocument> {
     try {
@@ -53,6 +59,28 @@ export class UsersService {
 
       const createdUser = new this.userModel(userData)
       const result = await createdUser.save()
+
+      // Si el usuario es un proveedor, enviar correo de bienvenida
+      if (createUserDto.role === UserRole.PROVIDER) {
+        try {
+          const frontendUrl = this.configService.get<string>('FRONTEND_URL')
+          await this.emailService.sendProviderWelcomeEmail(
+            createUserDto.email,
+            {
+              firstName: createUserDto.firstName,
+              lastName: createUserDto.lastName,
+              password: createUserDto.password, // Enviamos la contraseña sin encriptar para el correo
+              loginUrl: `${frontendUrl}/auth/login`,
+            }
+          )
+        } catch (error) {
+          this.logger.error(
+            `Error al enviar correo de bienvenida al proveedor: ${error.message}`,
+            error.stack
+          )
+          // No lanzamos el error para no interrumpir la creación del usuario
+        }
+      }
 
       this.logger.log(`Usuario creado exitosamente con ID: ${result._id}`)
       this.logger.debug(

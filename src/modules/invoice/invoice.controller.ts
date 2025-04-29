@@ -384,8 +384,12 @@ export class InvoiceController {
   })
   async updatePaymentStatus(
     @Param('id') id: string,
-    @Body() body: { status: 'APPROVED' | 'REJECTED' }
+    @Body() body: { status: 'APPROVED' | 'REJECTED'; rejectionReason?: string }
   ) {
-    return this.invoiceService.updatePaymentStatus(id, body.status)
+    return this.invoiceService.updatePaymentStatus(
+      id,
+      body.status,
+      body.rejectionReason
+    )
   }
 }

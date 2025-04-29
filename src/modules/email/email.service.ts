@@ -275,4 +275,39 @@ export class EmailService {
       throw error
     }
   }
+
+  async sendProviderWelcomeEmail(
+    email: string,
+    data: {
+      firstName: string
+      lastName: string
+      password: string
+      loginUrl: string
+    }
+  ) {
+    try {
+      this.logger.debug(`Enviando correo de bienvenida a proveedor: ${email}`)
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Bienvenido a Nuestra Plataforma de Proveedores',
+        template: './provider-welcome',
+        context: {
+          logoUrl: 'https://eventuz.com/assets/images/logo1.svg',
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: email,
+          password: data.password,
+          loginUrl: data.loginUrl,
+          year: new Date().getFullYear(),
+        },
+      })
+      this.logger.debug(`Correo de bienvenida enviado exitosamente a ${email}`)
+    } catch (error) {
+      this.logger.error(
+        `Error al enviar correo de bienvenida a ${email}:`,
+        error
+      )
+      throw error
+    }
+  }
 }
