@@ -12,12 +12,18 @@ import { CreateUserDto } from './dto/create-user.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
 import * as bcrypt from 'bcrypt'
 import { UserRole } from '../auth/enums/user-role.enum'
+import { EmailService } from '../email/email.service'
+import { ConfigService } from '@nestjs/config'
 
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name)
 
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService
+  ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     try {
@@ -336,28 +342,58 @@ export class UserService {
   }
 
   async createProviderUser(userDto: any): Promise<UserDocument> {
-    // Validar que no exista otro usuario con el mismo email
-    const existingUser = await this.userModel.findOne({ email: userDto.email })
-    if (existingUser) {
-      throw new BadRequestException('El email ya está en uso')
+    try {
+      // Validar que no exista otro usuario con el mismo email
+      const existingUser = await this.userModel.findOne({
+        email: userDto.email,
+      })
+      if (existingUser) {
+        throw new BadRequestException('El email ya está en uso')
+      }
+
+      // Encriptar contraseña
+      const hashedPassword = await bcrypt.hash(userDto.password, 10)
+
+      // Crear el usuario con rol PROVIDER
+      const newUser = new this.userModel({
+        firstName: userDto.firstName,
+        lastName: userDto.lastName,
+        email: userDto.email,
+        password: hashedPassword,
+        role: UserRole.PROVIDER,
+        companyId: userDto.companyId,
+        providerId: userDto.providerId,
+        isActive: true,
+      })
+
+      const savedUser = await newUser.save()
+
+      // Enviar correo de bienvenida
+      try {
+        const frontendUrl = this.configService.get<string>('FRONTEND_URL')
+        await this.emailService.sendProviderWelcomeEmail(userDto.email, {
+          firstName: userDto.firstName,
+          lastName: userDto.lastName,
+          password: userDto.password, // Enviamos la contraseña sin encriptar para el correo
+          loginUrl: `${frontendUrl}/auth/login`,
+        })
+        this.logger.log(`Correo de bienvenida enviado a ${userDto.email}`)
+      } catch (error) {
+        this.logger.error(
+          `Error al enviar correo de bienvenida: ${error.message}`,
+          error.stack
+        )
+        // No lanzamos el error para no interrumpir la creación del usuario
+      }
+
+      return savedUser
+    } catch (error) {
+      this.logger.error(
+        `Error al crear proveedor: ${error.message}`,
+        error.stack
+      )
+      throw error
     }
-
-    // Encriptar contraseña
-    const hashedPassword = await bcrypt.hash(userDto.password, 10)
-
-    // Crear el usuario con rol PROVIDER
-    const newUser = new this.userModel({
-      firstName: userDto.firstName,
-      lastName: userDto.lastName,
-      email: userDto.email,
-      password: hashedPassword,
-      role: UserRole.PROVIDER,
-      companyId: userDto.companyId,
-      providerId: userDto.providerId,
-      isActive: true,
-    })
-
-    return newUser.save()
   }
 
   async delete(id: string): Promise<void> {

@@ -49,22 +49,46 @@ export class UserController {
     type: CreateUserDto,
   })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
-  async create(
-    @Body() createUserDto: CreateUserDto,
-    @Req() req: ExpressRequest
-  ): Promise<User> {
+  @ApiResponse({ status: 403, description: 'No autorizado' })
+  async create(@Body() createUserDto: CreateUserDto) {
     try {
-      this.logger.log(
-        `Recibida solicitud para crear usuario: ${JSON.stringify(createUserDto)}`
-      )
+      this.logger.log('Recibida solicitud para crear usuario')
       const user = await this.userService.create(createUserDto)
-      this.logger.log(`Usuario creado exitosamente: ${user._id}`)
+      this.logger.log('Usuario creado exitosamente')
       return user
     } catch (error) {
       this.logger.error(`Error al crear usuario: ${error.message}`, error.stack)
       throw new HttpException(
         error.message || 'Error al crear el usuario',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
+  }
+
+  @Post('provider')
+  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @ApiOperation({ summary: 'Crear un nuevo proveedor' })
+  @ApiResponse({
+    status: 201,
+    description: 'Proveedor creado exitosamente',
+    type: CreateUserDto,
+  })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 403, description: 'No autorizado' })
+  async createProvider(@Body() createProviderDto: CreateUserDto) {
+    try {
+      this.logger.log('Recibida solicitud para crear proveedor')
+      const provider =
+        await this.userService.createProviderUser(createProviderDto)
+      this.logger.log('Proveedor creado exitosamente')
+      return provider
+    } catch (error) {
+      this.logger.error(
+        `Error al crear proveedor: ${error.message}`,
+        error.stack
+      )
+      throw new HttpException(
+        error.message || 'Error al crear el proveedor',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR
       )
     }
