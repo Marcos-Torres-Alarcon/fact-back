@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Notificación de Factura Aprobada</title>
+    <title>Notificación de Factura {{#if (eq status "APPROVED")}}Aprobada{{else}}Rechazada{{/if}}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,7 +13,7 @@
             padding: 20px;
         }
         .header {
-            background-color: #e8f5e9;
+            background-color: {{#if (eq status "APPROVED")}}#e8f5e9{{else}}#ffebee{{/if}};
             padding: 20px;
             border-radius: 5px;
             margin-bottom: 20px;
@@ -30,23 +30,23 @@
             font-size: 12px;
             color: #666;
         }
-        .approval-message {
-            background-color: #e8f5e9;
+        .status-message {
+            background-color: {{#if (eq status "APPROVED")}}#e8f5e9{{else}}#ffebee{{/if}};
             padding: 15px;
-            border-left: 4px solid #4caf50;
+            border-left: 4px solid {{#if (eq status "APPROVED")}}#4caf50{{else}}#f44336{{/if}};
             margin: 15px 0;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h2>Notificación de Factura Aprobada</h2>
+        <h2>Notificación de Factura {{#if (eq status "APPROVED")}}Aprobada{{else}}Rechazada{{/if}}</h2>
     </div>
     
     <div class="content">
         <p>Estimado/a,</p>
         
-        <p>Le informamos que la siguiente factura ha sido aprobada:</p>
+        <p>Le informamos que la siguiente factura ha sido {{#if (eq status "APPROVED")}}aprobada{{else}}rechazada{{/if}}:</p>
         
         <ul>
             <li><strong>Proveedor:</strong> {{providerName}}</li>
@@ -55,12 +55,20 @@
             <li><strong>Tipo:</strong> {{type}}</li>
         </ul>
 
-        <div class="approval-message">
+        <div class="status-message">
             <strong>Estado:</strong>
+            {{#if (eq status "APPROVED")}}
             <p>La factura ha sido aprobada correctamente y está lista para el siguiente paso del proceso.</p>
+            {{else}}
+            <p>La factura ha sido rechazada. {{#if rejectionReason}}Motivo: {{rejectionReason}}{{/if}}</p>
+            {{/if}}
         </div>
 
+        {{#if (eq status "APPROVED")}}
         <p>Puede proceder con el siguiente paso del proceso de pago.</p>
+        {{else}}
+        <p>Por favor, tome las acciones necesarias para corregir la situación.</p>
+        {{/if}}
     </div>
 
     <div class="footer">
