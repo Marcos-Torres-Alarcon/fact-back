@@ -59,6 +59,12 @@ export class UsersController {
       return user
     } catch (error) {
       this.logger.error(`Error al crear usuario: ${error.message}`, error.stack)
+      if (error.message.includes('email')) {
+        throw new HttpException(
+          'El correo electrónico ya está registrado',
+          HttpStatus.BAD_REQUEST
+        )
+      }
       throw new HttpException(
         error.message || 'Error al crear el usuario',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR

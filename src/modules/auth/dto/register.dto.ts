@@ -1,6 +1,5 @@
 import {
   IsString,
-  IsEmail,
   IsOptional,
   IsPhoneNumber,
   IsMongoId,
@@ -30,7 +29,7 @@ export class RegisterDto {
     description: 'Correo electrónico del usuario',
     example: 'juan.perez@ejemplo.com',
   })
-  @IsEmail()
+  @IsString()
   email: string
 
   @ApiProperty({
@@ -55,7 +54,7 @@ export class RegisterDto {
     description: 'Rol del usuario',
     enum: UserRole,
     example: UserRole.USER,
-    default: UserRole.USER
+    default: UserRole.USER,
   })
   @IsEnum(UserRole)
   role: UserRole = UserRole.USER
