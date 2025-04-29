@@ -863,7 +863,8 @@ export class InvoiceService {
 
   async updatePaymentStatus(
     id: string,
-    status: 'APPROVED' | 'REJECTED'
+    status: 'APPROVED' | 'REJECTED',
+    rejectionReason?: string
   ): Promise<Invoice> {
     try {
       this.logger.debug(
@@ -877,6 +878,9 @@ export class InvoiceService {
       }
 
       invoice.paymentStatus = status
+      if (status === 'REJECTED' && rejectionReason) {
+        invoice.rejectionReason = rejectionReason
+      }
       const updatedInvoice = await invoice.save()
 
       this.logger.debug(
@@ -886,6 +890,7 @@ export class InvoiceService {
             paymentStatus: updatedInvoice.paymentStatus,
             providerName: updatedInvoice.providerName,
             invoiceNumber: updatedInvoice.invoiceNumber,
+            rejectionReason: updatedInvoice.rejectionReason,
           },
           null,
           2
@@ -908,6 +913,8 @@ export class InvoiceService {
               date: updatedInvoice.fechaEmision,
               type: updatedInvoice.tipoComprobante,
               status: status,
+              rejectionReason:
+                status === 'REJECTED' ? rejectionReason : undefined,
             }
           )
           this.logger.debug(
