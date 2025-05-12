@@ -310,4 +310,21 @@ export class EmailService {
       throw error
     }
   }
+
+  async sendInvoiceUploadedExpenseNotification(data: {
+    providerName: string
+    invoiceNumber: string
+    date: string
+    type: string
+    status: string
+    montoTotal: number
+    moneda: string
+  }) {
+    await this.mailerService.sendMail({
+      to: 'ivantorres22_8@hotmail.com',
+      subject: 'Nueva factura de gastos subida',
+      template: 'invoice-uploaded-expense',
+      context: data,
+    })
+  }
 }

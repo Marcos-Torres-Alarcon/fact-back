@@ -1,29 +1,29 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { CreateExpenseDto } from './dto/create-expense.dto';
-import { UpdateExpenseDto } from './dto/update-expense.dto';
-import { ConfigService } from '@nestjs/config';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { HumanMessage } from '@langchain/core/messages';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common'
+import { CreateExpenseDto } from './dto/create-expense.dto'
+import { UpdateExpenseDto } from './dto/update-expense.dto'
+import { ConfigService } from '@nestjs/config'
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
+import { HumanMessage } from '@langchain/core/messages'
 import { Model } from 'mongoose'
-import { Expense } from './entities/expense.entity';
-import { InjectModel } from '@nestjs/mongoose';
+import { Expense } from './entities/expense.entity'
+import { InjectModel } from '@nestjs/mongoose'
+import { EmailService } from '../email/email.service'
 @Injectable()
 export class ExpenseService {
-
   private readonly logger = new Logger(ExpenseService.name)
 
   constructor(
     private readonly configService: ConfigService,
     @InjectModel(Expense.name)
-    private expenseRepository: Model<Expense>
+    private expenseRepository: Model<Expense>,
+    private readonly emailService: EmailService
   ) {
-    const googleApiKey = this.configService.get<string>('GOOGLE_AI_KEY');
+    const googleApiKey = this.configService.get<string>('GOOGLE_AI_KEY')
 
     if (!googleApiKey) {
-      this.logger.error('La API Key de Google AI no está configurada.');
-      throw new Error('GOOGLE_AI_KEY is not defined in environment variables.');
+      this.logger.error('La API Key de Google AI no está configurada.')
+      throw new Error('GOOGLE_AI_KEY is not defined in environment variables.')
     }
-
   }
 
   async createCompletation(imagePart: any) {
@@ -31,14 +31,14 @@ export class ExpenseService {
       throw new HttpException(
         'El archivo de entrada está vacío',
         HttpStatus.BAD_REQUEST
-      );
+      )
     }
 
     const llm = new ChatGoogleGenerativeAI({
       apiKey: this.configService.get<string>('GOOGLE_AI_KEY'),
       model: 'gemini-2.0-flash',
       // temperature: 0.7
-    });
+    })
 
     const systemPrompt = `
     # Rol: Eres un experto en contabilidad y finanzas en el Perú con 10 años de experiencia, experto en facturas y boletas. .
@@ -72,40 +72,43 @@ export class ExpenseService {
       - Debes usar la precisión y el contexto del texto de la factura para extraer los datos.
       - Si no encuentras todos los datos necesarios, responde con un objeto vacio.
       
-    `;
+    `
 
     const message = new HumanMessage({
       content: [
         // Parte de texto (el prompt)
         {
-          type: "text",
+          type: 'text',
           text: systemPrompt,
         },
         // Parte de imagen (usando el Data URI)
         {
-          type: "image_url",
+          type: 'image_url',
           image_url: {
-            url: imagePart
+            url: imagePart,
           },
         },
       ],
-    });
+    })
 
     try {
-      const response = await llm.invoke([message]);
+      const response = await llm.invoke([message])
       if (!response) {
-        throw new Error('No se recibió una respuesta válida del modelo');
+        throw new Error('No se recibió una respuesta válida del modelo')
       }
-      const content = response.content as string;
-      const jsonStringLimpio = content.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-      const jsonObject = JSON.parse(jsonStringLimpio);
-      return jsonObject;
+      const content = response.content as string
+      const jsonStringLimpio = content
+        .replace(/^```json\s*/, '')
+        .replace(/\s*```$/, '')
+        .trim()
+      const jsonObject = JSON.parse(jsonStringLimpio)
+      return jsonObject
     } catch (error) {
-      this.logger.error(`Error durante el procesamiento: ${error.message}`);
+      this.logger.error(`Error durante el procesamiento: ${error.message}`)
       throw new HttpException(
         'Error al procesar el texto. Por favor, verifique que el contenido sea legible.',
         HttpStatus.BAD_REQUEST
-      );
+      )
     }
   }
   async uploadInvoice(
@@ -136,7 +139,6 @@ export class ExpenseService {
         // await worker.terminate()
         // text = result.data.text
 
-
         // if (!text || text.trim().length === 0) {
         //   this.logger.error('No se pudo extraer texto del archivo')
         //   throw new HttpException(
@@ -147,20 +149,28 @@ export class ExpenseService {
         // this.logger.debug(`Extracted text length: ${text.length}`)
 
         const base64File = fileBuffer.toString('base64')
-        const imageDataUri = `data:${mimeType};base64,${base64File}`;
-
+        const imageDataUri = `data:${mimeType};base64,${base64File}`
 
         const response = await this.createCompletation(imageDataUri)
         const expense = await this.expenseRepository.create({
           ...body,
           total: response.montoTotal,
           data: JSON.stringify(response),
-          file: `data:${mimeType};base64,${base64File}`
+          file: `data:${mimeType};base64,${base64File}`,
+        })
+
+        // Enviar correo de notificación de gasto
+        await this.emailService.sendInvoiceUploadedExpenseNotification({
+          providerName: response.rucEmisor || 'Desconocido',
+          invoiceNumber: `${response.serie || ''}-${response.correlativo || ''}`,
+          date: response.fechaEmision || '',
+          type: response.tipoComprobante || '',
+          status: 'PENDIENTE',
+          montoTotal: response.montoTotal || 0,
+          moneda: response.moneda || '',
         })
 
         return expense
-
-
       } catch (error) {
         this.logger.error(`Error during processing: ${error.message}`)
         throw new HttpException(
@@ -168,7 +178,6 @@ export class ExpenseService {
           HttpStatus.BAD_REQUEST
         )
       }
-
     } catch (error) {
       if (error instanceof HttpException) {
         throw error
@@ -180,7 +189,6 @@ export class ExpenseService {
       )
     }
   }
-
 
   create(createExpenseDto: CreateExpenseDto) {
     return this.expenseRepository.create(createExpenseDto)
@@ -195,7 +203,9 @@ export class ExpenseService {
   }
 
   update(id: string, updateExpenseDto: UpdateExpenseDto) {
-    return this.expenseRepository.findByIdAndUpdate(id, updateExpenseDto, { new: true }).exec()
+    return this.expenseRepository
+      .findByIdAndUpdate(id, updateExpenseDto, { new: true })
+      .exec()
   }
 
   remove(id: string) {
