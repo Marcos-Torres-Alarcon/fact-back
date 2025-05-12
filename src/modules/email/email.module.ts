@@ -5,8 +5,6 @@ import { MailerModule } from '@nestjs-modules/mailer'
 import { join } from 'path'
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter'
 
-const logger = new Logger('EmailModule')
-
 @Module({
   imports: [
     MailerModule.forRootAsync({
@@ -32,19 +30,6 @@ const logger = new Logger('EmailModule')
             },
           },
         }
-
-        // Log de la configuración (sin la contraseña)
-        logger.debug('Configuración de correo:', {
-          ...config,
-          transport: {
-            ...config.transport,
-            auth: {
-              user: config.transport.auth.user,
-              pass: config.transport.auth.pass ? '***' : undefined,
-            },
-          },
-        })
-
         return config
       },
     }),
@@ -53,4 +38,4 @@ const logger = new Logger('EmailModule')
   providers: [EmailService],
   exports: [EmailService],
 })
-export class EmailModule {}
+export class EmailModule { }

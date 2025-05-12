@@ -15,6 +15,7 @@ import { PaymentModule } from './modules/payment/payment.module'
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module'
 import { ProvidersModule } from './modules/providers/providers.module'
 import { EmailModule } from './modules/email/email.module'
+import { ExpenseModule } from './modules/expense/expense.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { EmailModule } from './modules/email/email.module'
     PurchaseOrderModule,
     ProvidersModule,
     EmailModule,
+    ExpenseModule,
   ],
   controllers: [AppController],
   providers: [AppService],
