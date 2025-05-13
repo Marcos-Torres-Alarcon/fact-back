@@ -3,10 +3,12 @@ import { ApiProperty } from '@nestjs/swagger'
 
 export enum RoleType {
   ADMIN = 'ADMIN',
+  ADMIN2 = 'ADMIN2',
   PURCHASING_MANAGER = 'PURCHASING_MANAGER',
   ACCOUNTANT = 'ACCOUNTANT',
   PROJECT_MANAGER = 'PROJECT_MANAGER',
   USER = 'USER',
+  COLABORADOR = 'COLABORADOR',
 }
 
 export interface RoleDocument {
