@@ -42,7 +42,7 @@ export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
   @ApiOperation({ summary: 'Crear un nuevo proyecto' })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -57,7 +57,7 @@ export class ProjectController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.PROVIDER)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY, UserRole.PROVIDER)
   @ApiOperation({ summary: 'Obtener todos los proyectos' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -68,7 +68,7 @@ export class ProjectController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.PROVIDER)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY, UserRole.PROVIDER)
   @ApiOperation({ summary: 'Obtener un proyecto por ID' })
   @ApiParam({ name: 'id', description: 'ID del proyecto' })
   @ApiResponse({
@@ -84,7 +84,7 @@ export class ProjectController {
   }
 
   @Get('client/:client')
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.PROVIDER, UserRole.USER)
   @ApiOperation({ summary: 'Obtener proyectos por cliente' })
   @ApiParam({ name: 'client', description: 'ID del cliente' })
   @ApiResponse({
@@ -101,7 +101,7 @@ export class ProjectController {
   }
 
   @Get('company/:companyId')
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.PROVIDER, UserRole.USER)
   @ApiOperation({ summary: 'Obtener proyectos por ID de compañía' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -117,7 +117,7 @@ export class ProjectController {
   }
 
   @Get('status/:status')
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.PROVIDER, UserRole.USER)
   @ApiOperation({ summary: 'Obtener proyectos por estado' })
   @ApiParam({ name: 'status', description: 'Estado del proyecto' })
   @ApiResponse({
@@ -130,7 +130,7 @@ export class ProjectController {
   }
 
   @Get('user/:userId')
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.PROVIDER, UserRole.USER)
   @ApiOperation({ summary: 'Obtener proyectos por ID de usuario' })
   @ApiParam({ name: 'userId', description: 'ID del usuario' })
   @ApiResponse({
@@ -147,7 +147,7 @@ export class ProjectController {
   }
 
   @Patch(':id/status')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
   @ApiOperation({ summary: 'Actualizar el estado de un proyecto' })
   @ApiParam({ name: 'id', description: 'ID del proyecto' })
   @ApiBody({ type: UpdateProjectStatusDto })
@@ -209,7 +209,7 @@ export class ProjectController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
   @ApiOperation({ summary: 'Eliminar un proyecto' })
   @ApiParam({ name: 'id', description: 'ID del proyecto' })
   @ApiResponse({
