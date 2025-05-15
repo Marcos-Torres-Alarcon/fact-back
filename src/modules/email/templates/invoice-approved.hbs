@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Notificación de Factura Rechazada</title>
+    <title>Notificación de Factura Aprobada</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -30,23 +30,23 @@
             font-size: 12px;
             color: #666;
         }
-        .rejection-reason {
-            background-color: #fff3f3;
+        .approval-notification {
+            background-color: #f1f8e9;
             padding: 15px;
-            border-left: 4px solid #dc3545;
+            border-left: 4px solid #4caf50;
             margin: 15px 0;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h2>Notificación de Factura Rechazada</h2>
+        <h2>Notificación de Factura Aprobada</h2>
     </div>
     
     <div class="content">
         <p>Estimado/a,</p>
         
-        <p>Le informamos que la siguiente factura ha sido rechazada:</p>
+        <p>Le informamos que la siguiente factura ha sido aprobada:</p>
         
         <ul>
             <li><strong>Proveedor:</strong> {{providerName}}</li>
@@ -55,13 +55,12 @@
             <li><strong>Tipo:</strong> {{type}}</li>
         </ul>
 
-        <div class="rejection-reason">
-            <strong>Motivo del Rechazo:</strong>
-            <p>{{rejectionReason}}</p>
-            <p><strong>Rechazada por:</strong> {{rejectedBy}}</p>
+        <div class="approval-notification">
+            <p><strong>Aprobada por:</strong> {{approvedBy}}</p>
+            <p>La factura ha sido procesada correctamente.</p>
         </div>
 
-        <p>Por favor, tome las acciones necesarias para corregir la situación.</p>
+        <p>Esta factura continuará su proceso según los flujos establecidos.</p>
     </div>
 
     <div class="footer">

@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsNotEmpty } from 'class-validator'
+import { IsString, IsOptional, IsNotEmpty, IsEnum } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
+import { ExpenseStatus } from '../entities/expense.entity'
 
 export class CreateExpenseDto {
   @ApiProperty({
@@ -51,4 +52,24 @@ export class CreateExpenseDto {
   })
   @IsOptional()
   total?: number
+
+  @ApiProperty({
+    description: 'Estado de la factura',
+    example: 'pending',
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending',
+    required: false,
+  })
+  @IsEnum(['pending', 'approved', 'rejected'])
+  @IsOptional()
+  status?: ExpenseStatus
+
+  @ApiProperty({
+    description: 'ID del usuario que crea la factura',
+    example: '6543210abcdef',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  userId?: string
 }

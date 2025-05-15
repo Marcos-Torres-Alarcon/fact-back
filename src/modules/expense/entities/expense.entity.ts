@@ -2,6 +2,8 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document } from 'mongoose'
 import { ApiProperty } from '@nestjs/swagger'
 
+export type ExpenseStatus = 'pending' | 'approved' | 'rejected'
+
 export interface ExpenseDocument extends Document {
   proyect: string
   projectName?: string
@@ -10,6 +12,11 @@ export interface ExpenseDocument extends Document {
   category: string
   file: string
   data: string
+  status?: ExpenseStatus
+  statusDate?: Date
+  approvedBy?: string
+  rejectedBy?: string
+  rejectionReason?: string
 }
 
 export interface GetExpenseDocument extends ExpenseDocument {
@@ -68,6 +75,50 @@ export class Expense {
   })
   @Prop()
   data: string
+
+  @ApiProperty({
+    description: 'Estado de la factura',
+    example: 'pending',
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending',
+  })
+  @Prop({ default: 'pending' })
+  status: ExpenseStatus
+
+  @ApiProperty({
+    description: 'Fecha de cambio de estado',
+    required: false,
+  })
+  @Prop()
+  statusDate: Date
+
+  @ApiProperty({
+    description: 'ID del usuario que aprobó la factura',
+    required: false,
+  })
+  @Prop()
+  approvedBy: string
+
+  @ApiProperty({
+    description: 'ID del usuario que rechazó la factura',
+    required: false,
+  })
+  @Prop()
+  rejectedBy: string
+
+  @ApiProperty({
+    description: 'Motivo del rechazo',
+    required: false,
+  })
+  @Prop()
+  rejectionReason: string
+
+  @ApiProperty({
+    description: 'ID del usuario que creó la factura',
+    required: false,
+  })
+  @Prop()
+  createdBy: string
 }
 
 export const ExpenseSchema = SchemaFactory.createForClass(Expense)

@@ -16,6 +16,9 @@ import { PROMPT1 } from './constants/prompt1'
 import OpenAI from 'openai'
 import { CategoryService } from '../category/category.service'
 import { ProjectTypeService } from '../project/project-type.service'
+import { ApprovalDto } from './dto/approval.dto'
+import { UserService } from '../user/user.service'
+import { UserRole } from '../auth/enums/user-role.enum'
 
 @Injectable()
 export class ExpenseService {
@@ -29,7 +32,8 @@ export class ExpenseService {
     private expenseRepository: Model<Expense>,
     private readonly emailService: EmailService,
     private readonly categoryService: CategoryService,
-    private readonly projectTypeService: ProjectTypeService
+    private readonly projectTypeService: ProjectTypeService,
+    private readonly userService: UserService
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY')
     if (!apiKey) {
@@ -38,18 +42,15 @@ export class ExpenseService {
     this.openai = new OpenAI({ apiKey })
   }
 
-  // Método para validar categoría y proyecto
   async validateCategoryAndProject(
     proyect: string,
     category: string
   ): Promise<void> {
     try {
-      // Verificar si existe el proyecto (usando ProjectTypeService)
       if (proyect) {
         await this.projectTypeService.findOne(proyect)
       }
 
-      // Verificar si existe la categoría (por key)
       if (category) {
         await this.categoryService.findByKey(category)
       }
@@ -67,7 +68,6 @@ export class ExpenseService {
     console.log(body)
     const prompt = PROMPT1
     try {
-      // Validar que la categoría y el proyecto existan
       await this.validateCategoryAndProject(body.proyect, body.category)
 
       const response = await this.openai.chat.completions.create({
@@ -102,17 +102,190 @@ export class ExpenseService {
         total: jsonObject.montoTotal,
         data: JSON.stringify(jsonObject),
         file: body.imageUrl,
+        status: 'pending',
+        createdBy: body.userId,
       })
-      // Enviar correo de notificación de gasto
-      // await this.emailService.sendInvoiceUploadedExpenseNotification({
-      //   providerName: jsonObject.rucEmisor || 'Desconocido',
-      //   invoiceNumber: `${jsonObject.serie || ''}-${jsonObject.correlativo || ''}`,
-      //   date: jsonObject.fechaEmision || '',
-      //   type: jsonObject.tipoComprobante || '',
-      //   status: 'PENDIENTE',
-      //   montoTotal: jsonObject.montoTotal || 0,
-      //   moneda: jsonObject.moneda || '',
-      // })
+
+      try {
+        const admins = await this.userService.findByRoleAndStatus(
+          UserRole.ADMIN2,
+          true
+        )
+
+        if (admins && admins.length > 0) {
+          const creatorId = body.userId
+          let creatorName = 'Usuario del sistema'
+
+          if (creatorId) {
+            try {
+              const creator = await this.userService.findOne(creatorId, {
+                role: UserRole.ADMIN,
+              })
+              if (creator) {
+                creatorName =
+                  creator.firstName && creator.lastName
+                    ? `${creator.firstName} ${creator.lastName}`
+                    : creator.email || 'Usuario del sistema'
+              }
+            } catch (error) {
+              this.logger.warn(
+                'No se pudo obtener información del usuario creador'
+              )
+            }
+          }
+
+          for (const admin of admins) {
+            if (admin.email) {
+              await this.emailService.sendInvoiceUploadedExpenseNotification(
+                admin.email,
+                {
+                  providerName: creatorName,
+                  invoiceNumber: `${jsonObject.serie || ''}-${
+                    jsonObject.correlativo || ''
+                  }`,
+                  date:
+                    jsonObject.fechaEmision ||
+                    new Date().toISOString().split('T')[0],
+                  type: jsonObject.tipoComprobante || 'Factura',
+                  status: 'PENDIENTE',
+                  montoTotal: jsonObject.montoTotal || 0,
+                  moneda: jsonObject.moneda || 'PEN',
+                  createdBy: creatorName,
+                  category: body.category || 'No especificada',
+                  projectName: body.projectName || 'No especificado',
+                  razonSocial: jsonObject.razonSocial || 'No especificada',
+                  direccionEmisor: jsonObject.direccionEmisor,
+                }
+              )
+            }
+          }
+        } else {
+          this.logger.warn('No se encontraron usuarios con rol ADMIN2 activos')
+
+          if (body.userId) {
+            try {
+              const creator = await this.userService.findOne(body.userId, {
+                role: UserRole.ADMIN,
+              })
+              if (creator && creator.email) {
+                const creatorFullName =
+                  creator.firstName && creator.lastName
+                    ? `${creator.firstName} ${creator.lastName}`
+                    : creator.email
+
+                await this.emailService.sendInvoiceUploadedExpenseNotification(
+                  creator.email,
+                  {
+                    providerName: creatorFullName,
+                    invoiceNumber: `${jsonObject.serie || ''}-${
+                      jsonObject.correlativo || ''
+                    }`,
+                    date:
+                      jsonObject.fechaEmision ||
+                      new Date().toISOString().split('T')[0],
+                    type: jsonObject.tipoComprobante || 'Factura',
+                    status: 'PENDIENTE',
+                    montoTotal: jsonObject.montoTotal || 0,
+                    moneda: jsonObject.moneda || 'PEN',
+                    createdBy: creatorFullName,
+                    category: body.category || 'No especificada',
+                    projectName: body.projectName || 'No especificado',
+                    razonSocial: jsonObject.razonSocial || 'No especificada',
+                    direccionEmisor: jsonObject.direccionEmisor,
+                  }
+                )
+              }
+            } catch (error) {
+              this.logger.warn(
+                'No se pudo enviar notificación al creador:',
+                error
+              )
+            }
+          }
+        }
+
+        try {
+          const colaboradores = await this.userService.findByRoleAndStatus(
+            UserRole.COLABORADOR,
+            true
+          )
+
+          if (colaboradores && colaboradores.length > 0) {
+            this.logger.debug(
+              `Encontrados ${colaboradores.length} colaboradores activos para notificar`
+            )
+
+            const creatorId = body.userId
+            let creatorName = 'Usuario del sistema'
+
+            if (creatorId) {
+              try {
+                const creator = await this.userService.findOne(creatorId, {
+                  role: UserRole.ADMIN,
+                })
+                if (creator) {
+                  creatorName =
+                    creator.firstName && creator.lastName
+                      ? `${creator.firstName} ${creator.lastName}`
+                      : creator.email || 'Usuario del sistema'
+                }
+              } catch (error) {
+                this.logger.warn(
+                  'No se pudo obtener información del usuario creador'
+                )
+              }
+            }
+
+            for (const colaborador of colaboradores) {
+              if (colaborador.email) {
+                try {
+                  await this.emailService.sendInvoiceUploadedExpenseNotification(
+                    colaborador.email,
+                    {
+                      providerName: creatorName,
+                      invoiceNumber: `${jsonObject.serie || ''}-${
+                        jsonObject.correlativo || ''
+                      }`,
+                      date:
+                        jsonObject.fechaEmision ||
+                        new Date().toISOString().split('T')[0],
+                      type: jsonObject.tipoComprobante || 'Factura',
+                      status: 'PENDIENTE',
+                      montoTotal: jsonObject.montoTotal || 0,
+                      moneda: jsonObject.moneda || 'PEN',
+                      createdBy: creatorName,
+                      category: body.category || 'No especificada',
+                      projectName: body.projectName || 'No especificado',
+                      razonSocial: jsonObject.razonSocial || 'No especificada',
+                      direccionEmisor: jsonObject.direccionEmisor,
+                    }
+                  )
+                  this.logger.debug(
+                    `Notificación enviada al colaborador: ${colaborador.email}`
+                  )
+                } catch (error) {
+                  this.logger.warn(
+                    `Error al enviar notificación al colaborador ${colaborador.email}:`,
+                    error
+                  )
+                }
+              }
+            }
+          } else {
+            this.logger.debug(
+              'No se encontraron usuarios con rol COLABORADOR activos'
+            )
+          }
+        } catch (error) {
+          this.logger.error(
+            'Error al enviar notificaciones a colaboradores:',
+            error
+          )
+        }
+      } catch (error) {
+        this.logger.error('Error al enviar notificaciones de correo:', error)
+      }
+
       return expense
     } catch (error) {
       this.logger.error('OpenAI API Error Response:', error)
@@ -124,12 +297,14 @@ export class ExpenseService {
   }
 
   async create(createExpenseDto: CreateExpenseDto) {
-    // Validar que la categoría y el proyecto existan
     await this.validateCategoryAndProject(
       createExpenseDto.proyect,
       createExpenseDto.category
     )
-    return this.expenseRepository.create(createExpenseDto)
+    return this.expenseRepository.create({
+      ...createExpenseDto,
+      status: 'pending',
+    })
   }
 
   findAll() {
@@ -141,7 +316,6 @@ export class ExpenseService {
   }
 
   async update(id: string, updateExpenseDto: UpdateExpenseDto) {
-    // Si se está actualizando la categoría o el proyecto, validar que existan
     if (updateExpenseDto.category || updateExpenseDto.proyect) {
       const expense = await this.findOne(id)
       if (!expense) {
@@ -156,6 +330,477 @@ export class ExpenseService {
     return this.expenseRepository
       .findByIdAndUpdate(id, updateExpenseDto, { new: true })
       .exec()
+  }
+
+  async approveInvoice(id: string, approvalDto: ApprovalDto) {
+    const expense = await this.findOne(id)
+    if (!expense) {
+      throw new NotFoundException(`Factura con ID ${id} no encontrada`)
+    }
+
+    if (expense.status !== 'pending') {
+      throw new HttpException(
+        `La factura ya ha sido ${expense.status === 'approved' ? 'aprobada' : 'rechazada'}`,
+        HttpStatus.BAD_REQUEST
+      )
+    }
+
+    let validUserId = null
+    let userEmail = null
+    let userName = null
+    let userLastName = null
+
+    if (approvalDto.userId) {
+      if (/^[0-9a-fA-F]{24}$/.test(approvalDto.userId)) {
+        validUserId = approvalDto.userId
+      } else {
+        this.logger.warn(
+          `ID de usuario inválido para aprobar: ${approvalDto.userId}. Se intentará buscar por email.`
+        )
+
+        try {
+          const userByEmail = await this.userService.findByEmail(
+            approvalDto.userId
+          )
+          if (userByEmail) {
+            validUserId = userByEmail._id
+            userEmail = userByEmail.email
+            userName = userByEmail.firstName
+            userLastName = userByEmail.lastName
+
+            this.logger.debug(`Usuario encontrado por email: ${userEmail}`)
+          }
+        } catch (error) {
+          this.logger.warn(
+            `No se pudo encontrar usuario por otros medios: ${error.message}`
+          )
+        }
+      }
+    }
+
+    const updatedExpense = await this.expenseRepository
+      .findByIdAndUpdate(
+        id,
+        {
+          status: 'approved',
+          statusDate: new Date(),
+          approvedBy: validUserId,
+        },
+        { new: true }
+      )
+      .exec()
+
+    try {
+      let approverName = 'Administrador del Sistema'
+
+      if (userName && userLastName) {
+        approverName = `${userName} ${userLastName}`
+        this.logger.debug(
+          `Usando información de aprobador encontrada previamente: ${approverName}`
+        )
+      } else if (validUserId) {
+        try {
+          const approver = await this.userService.findOne(validUserId, {
+            role: UserRole.ADMIN,
+          })
+          if (approver) {
+            approverName =
+              approver.firstName && approver.lastName
+                ? `${approver.firstName} ${approver.lastName}`
+                : approver.email || 'Administrador del Sistema'
+
+            this.logger.debug(
+              `Información de aprobador obtenida de la BD: ${approverName}`
+            )
+          }
+        } catch (error) {
+          this.logger.warn('No se pudo obtener información del aprobador')
+        }
+      } else {
+        this.logger.warn(
+          'Usando valor predeterminado para el aprobador: Administrador del Sistema'
+        )
+      }
+
+      const invoiceData = expense.data ? JSON.parse(expense.data) : {}
+
+      if (expense.createdBy) {
+        try {
+          if (!/^[0-9a-fA-F]{24}$/.test(expense.createdBy)) {
+            this.logger.warn(`ID del creador inválido: ${expense.createdBy}`)
+            return updatedExpense
+          }
+
+          const creator = await this.userService.findOne(expense.createdBy, {
+            role: UserRole.ADMIN,
+          })
+
+          if (creator && creator.email) {
+            const creatorFullName =
+              creator.firstName && creator.lastName
+                ? `${creator.firstName} ${creator.lastName}`
+                : creator.email || 'Usuario'
+
+            this.logger.debug(
+              `Enviando notificación de aprobación a ${creator.email}, rol: ${creator.role}`
+            )
+
+            if (creator.role === UserRole.COLABORADOR) {
+              await this.emailService.sendInvoiceApprovedToColaborador(
+                creator.email,
+                {
+                  providerName: creatorFullName,
+                  invoiceNumber: `${invoiceData.serie || ''}-${
+                    invoiceData.correlativo || ''
+                  }`,
+                  date:
+                    invoiceData.fechaEmision ||
+                    new Date().toISOString().split('T')[0],
+                  type: invoiceData.tipoComprobante || 'Factura',
+                  approvedBy: approverName,
+                }
+              )
+              this.logger.debug(
+                `Notificación de aprobación enviada a colaborador ${creator.email}`
+              )
+            } else {
+              await this.emailService.sendInvoiceApprovedNotification(
+                creator.email,
+                {
+                  providerName: creatorFullName,
+                  invoiceNumber: `${invoiceData.serie || ''}-${
+                    invoiceData.correlativo || ''
+                  }`,
+                  date:
+                    invoiceData.fechaEmision ||
+                    new Date().toISOString().split('T')[0],
+                  type: invoiceData.tipoComprobante || 'Factura',
+                  approvedBy: approverName,
+                }
+              )
+              this.logger.debug(
+                `Notificación de aprobación enviada a usuario ${creator.email} con rol ${creator.role}`
+              )
+            }
+          } else {
+            this.logger.warn(
+              'No se encontró email para el creador de la factura'
+            )
+          }
+        } catch (error) {
+          this.logger.warn(
+            'No se pudo encontrar al creador de la factura:',
+            error
+          )
+        }
+      } else {
+        this.logger.warn(
+          'La factura no tiene un creador asignado (createdBy es null)'
+        )
+      }
+
+      try {
+        const colaboradores = await this.userService.findByRoleAndStatus(
+          UserRole.COLABORADOR,
+          true
+        )
+
+        if (colaboradores && colaboradores.length > 0) {
+          this.logger.debug(
+            `Notificando a ${colaboradores.length} colaboradores sobre factura aprobada`
+          )
+
+          const creadorId = expense.createdBy || ''
+
+          for (const colaborador of colaboradores) {
+            if (colaborador.email && colaborador._id.toString() !== creadorId) {
+              try {
+                await this.emailService.sendInvoiceApprovedToColaborador(
+                  colaborador.email,
+                  {
+                    providerName:
+                      colaborador.firstName && colaborador.lastName
+                        ? `${colaborador.firstName} ${colaborador.lastName}`
+                        : colaborador.email,
+                    invoiceNumber: `${invoiceData.serie || ''}-${
+                      invoiceData.correlativo || ''
+                    }`,
+                    date:
+                      invoiceData.fechaEmision ||
+                      new Date().toISOString().split('T')[0],
+                    type: invoiceData.tipoComprobante || 'Factura',
+                    approvedBy: approverName,
+                  }
+                )
+                this.logger.debug(
+                  `Notificación de aprobación enviada a colaborador ${colaborador.email}`
+                )
+              } catch (error) {
+                this.logger.warn(
+                  `Error al enviar notificación de aprobación al colaborador ${colaborador.email}:`,
+                  error
+                )
+              }
+            }
+          }
+        } else {
+          this.logger.debug(
+            'No hay colaboradores activos para notificar sobre la factura aprobada'
+          )
+        }
+      } catch (error) {
+        this.logger.error(
+          'Error al notificar a colaboradores sobre factura aprobada:',
+          error
+        )
+      }
+    } catch (error) {
+      this.logger.error('Error al enviar notificación de aprobación:', error)
+    }
+
+    return updatedExpense
+  }
+
+  async rejectInvoice(id: string, approvalDto: ApprovalDto) {
+    const expense = await this.findOne(id)
+    if (!expense) {
+      throw new NotFoundException(`Factura con ID ${id} no encontrada`)
+    }
+
+    if (expense.status !== 'pending') {
+      throw new HttpException(
+        `La factura ya ha sido ${expense.status === 'approved' ? 'aprobada' : 'rechazada'}`,
+        HttpStatus.BAD_REQUEST
+      )
+    }
+
+    if (!approvalDto.reason) {
+      throw new HttpException(
+        'Se requiere un motivo para rechazar la factura',
+        HttpStatus.BAD_REQUEST
+      )
+    }
+
+    let validUserId = null
+    let userEmail = null
+    let userName = null
+    let userLastName = null
+
+    if (approvalDto.userId) {
+      if (/^[0-9a-fA-F]{24}$/.test(approvalDto.userId)) {
+        validUserId = approvalDto.userId
+      } else {
+        this.logger.warn(
+          `ID de usuario inválido para rechazar: ${approvalDto.userId}. Se intentará buscar por email.`
+        )
+
+        try {
+          const userByEmail = await this.userService.findByEmail(
+            approvalDto.userId
+          )
+          if (userByEmail) {
+            validUserId = userByEmail._id
+            userEmail = userByEmail.email
+            userName = userByEmail.firstName
+            userLastName = userByEmail.lastName
+
+            this.logger.debug(`Usuario encontrado por email: ${userEmail}`)
+          }
+        } catch (error) {
+          this.logger.warn(
+            `No se pudo encontrar usuario por otros medios: ${error.message}`
+          )
+        }
+      }
+    }
+
+    const updatedExpense = await this.expenseRepository
+      .findByIdAndUpdate(
+        id,
+        {
+          status: 'rejected',
+          statusDate: new Date(),
+          rejectedBy: validUserId,
+          rejectionReason: approvalDto.reason,
+        },
+        { new: true }
+      )
+      .exec()
+
+    try {
+      let rejectorName = 'Administrador del Sistema'
+
+      if (userName && userLastName) {
+        rejectorName = `${userName} ${userLastName}`
+        this.logger.debug(
+          `Usando información de rechazador encontrada previamente: ${rejectorName}`
+        )
+      } else if (validUserId) {
+        try {
+          const rejector = await this.userService.findOne(validUserId, {
+            role: UserRole.ADMIN,
+          })
+          if (rejector) {
+            rejectorName =
+              rejector.firstName && rejector.lastName
+                ? `${rejector.firstName} ${rejector.lastName}`
+                : rejector.email || 'Administrador del Sistema'
+
+            this.logger.debug(
+              `Información de rechazador obtenida de la BD: ${rejectorName}`
+            )
+          }
+        } catch (error) {
+          this.logger.warn(
+            'No se pudo obtener información del administrador que rechazó'
+          )
+        }
+      } else {
+        this.logger.warn(
+          'Usando valor predeterminado para el rechazador: Administrador del Sistema'
+        )
+      }
+
+      const invoiceData = expense.data ? JSON.parse(expense.data) : {}
+
+      if (expense.createdBy) {
+        try {
+          if (!/^[0-9a-fA-F]{24}$/.test(expense.createdBy)) {
+            this.logger.warn(`ID del creador inválido: ${expense.createdBy}`)
+            return updatedExpense
+          }
+
+          const creator = await this.userService.findOne(expense.createdBy, {
+            role: UserRole.ADMIN,
+          })
+
+          if (creator && creator.email) {
+            const creatorFullName =
+              creator.firstName && creator.lastName
+                ? `${creator.firstName} ${creator.lastName}`
+                : creator.email || 'Usuario'
+
+            this.logger.debug(
+              `Enviando notificación de rechazo a ${creator.email}, rol: ${creator.role}`
+            )
+
+            if (creator.role === UserRole.COLABORADOR) {
+              await this.emailService.sendInvoiceRejectedToColaborador(
+                creator.email,
+                {
+                  providerName: creatorFullName,
+                  invoiceNumber: `${invoiceData.serie || ''}-${
+                    invoiceData.correlativo || ''
+                  }`,
+                  date:
+                    invoiceData.fechaEmision ||
+                    new Date().toISOString().split('T')[0],
+                  type: invoiceData.tipoComprobante || 'Factura',
+                  rejectionReason: approvalDto.reason,
+                  rejectedBy: rejectorName,
+                }
+              )
+              this.logger.debug(
+                `Notificación de rechazo enviada a colaborador ${creator.email}`
+              )
+            } else {
+              await this.emailService.sendInvoiceRejectedNotification(
+                creator.email,
+                {
+                  providerName: creatorFullName,
+                  invoiceNumber: `${invoiceData.serie || ''}-${
+                    invoiceData.correlativo || ''
+                  }`,
+                  date:
+                    invoiceData.fechaEmision ||
+                    new Date().toISOString().split('T')[0],
+                  type: invoiceData.tipoComprobante || 'Factura',
+                  rejectionReason: approvalDto.reason,
+                  rejectedBy: rejectorName,
+                }
+              )
+              this.logger.debug(
+                `Notificación de rechazo enviada a usuario ${creator.email} con rol ${creator.role}`
+              )
+            }
+          } else {
+            this.logger.warn(
+              'No se encontró email para el creador de la factura'
+            )
+          }
+        } catch (error) {
+          this.logger.warn(
+            'No se pudo encontrar al creador de la factura:',
+            error
+          )
+        }
+      } else {
+        this.logger.warn(
+          'La factura no tiene un creador asignado (createdBy es null)'
+        )
+      }
+
+      try {
+        const colaboradores = await this.userService.findByRoleAndStatus(
+          UserRole.COLABORADOR,
+          true
+        )
+
+        if (colaboradores && colaboradores.length > 0) {
+          this.logger.debug(
+            `Notificando a ${colaboradores.length} colaboradores sobre factura rechazada`
+          )
+
+          const creadorId = expense.createdBy || ''
+
+          for (const colaborador of colaboradores) {
+            if (colaborador.email && colaborador._id.toString() !== creadorId) {
+              try {
+                await this.emailService.sendInvoiceRejectedToColaborador(
+                  colaborador.email,
+                  {
+                    providerName:
+                      colaborador.firstName && colaborador.lastName
+                        ? `${colaborador.firstName} ${colaborador.lastName}`
+                        : colaborador.email,
+                    invoiceNumber: `${invoiceData.serie || ''}-${
+                      invoiceData.correlativo || ''
+                    }`,
+                    date:
+                      invoiceData.fechaEmision ||
+                      new Date().toISOString().split('T')[0],
+                    type: invoiceData.tipoComprobante || 'Factura',
+                    rejectionReason: approvalDto.reason,
+                    rejectedBy: rejectorName,
+                  }
+                )
+                this.logger.debug(
+                  `Notificación de rechazo enviada a colaborador ${colaborador.email}`
+                )
+              } catch (error) {
+                this.logger.warn(
+                  `Error al enviar notificación de rechazo al colaborador ${colaborador.email}:`,
+                  error
+                )
+              }
+            }
+          }
+        } else {
+          this.logger.debug(
+            'No hay colaboradores activos para notificar sobre la factura rechazada'
+          )
+        }
+      } catch (error) {
+        this.logger.error(
+          'Error al notificar a colaboradores sobre factura rechazada:',
+          error
+        )
+      }
+    } catch (error) {
+      this.logger.error('Error al enviar notificación de rechazo:', error)
+    }
+
+    return updatedExpense
   }
 
   remove(id: string) {

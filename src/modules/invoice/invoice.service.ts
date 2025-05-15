@@ -709,22 +709,92 @@ export class InvoiceService {
         status: 'PENDING',
       })
 
-      // Enviar notificación de factura subida
-      await this.sendInvoiceUploadedNotification(
-        user.email,
-        validationResult.invoiceNumber,
-        `${user.firstName} ${user.lastName}`
-      )
+      // Obtener usuarios con roles específicos para enviar notificaciones
+      try {
+        const admins = await this.userService.findByRoleAndStatus(
+          UserRole.ADMIN2,
+          true
+        )
 
-      // Subir el acta
-      await this.uploadActaAceptacion(invoice._id.toString(), actaFile.buffer)
+        // Obtener el nombre completo del usuario para los correos
+        const userName =
+          user.firstName && user.lastName
+            ? `${user.firstName} ${user.lastName}`
+            : user.email || 'Usuario del sistema'
 
-      // Enviar notificación de acta subida
-      await this.sendActaUploadedNotification(
-        user.email,
-        validationResult.invoiceNumber,
-        `${user.firstName} ${user.lastName}`
-      )
+        // Enviar notificación de factura subida
+        await this.sendInvoiceUploadedNotification(
+          user.email,
+          validationResult.invoiceNumber,
+          `${user.firstName} ${user.lastName}`
+        )
+
+        // También enviar a los ADMIN2 si existen
+        if (admins && admins.length > 0) {
+          for (const admin of admins) {
+            if (admin.email) {
+              await this.emailService.sendInvoiceUploadedNotification(
+                admin.email,
+                {
+                  providerName: userName,
+                  invoiceNumber: validationResult.invoiceNumber,
+                  date: new Date(),
+                  type: validationResult.tipoComprobante || 'Factura',
+                  createdBy: userName,
+                  // Información adicional relevante
+                  razonSocial: validationResult.rucEmisor || 'No especificada',
+                  montoTotal: validationResult.montoTotal || 0,
+                  moneda: validationResult.moneda || 'PEN',
+                  status: 'PENDIENTE',
+                  showAdditionalInfo: true,
+                }
+              )
+            }
+          }
+        } else {
+          this.logger.warn('No se encontraron usuarios con rol ADMIN2 activos')
+        }
+
+        // Subir el acta
+        await this.uploadActaAceptacion(invoice._id.toString(), actaFile.buffer)
+
+        // Enviar notificación de acta subida
+        await this.sendActaUploadedNotification(
+          user.email,
+          validationResult.invoiceNumber,
+          `${user.firstName} ${user.lastName}`
+        )
+
+        // También enviar a los ADMIN2 si existen
+        if (admins && admins.length > 0) {
+          for (const admin of admins) {
+            if (admin.email) {
+              await this.emailService.sendActaUploadedNotification(
+                admin.email,
+                {
+                  providerName: userName,
+                  invoiceNumber: validationResult.invoiceNumber,
+                  date: new Date(),
+                  type: validationResult.tipoComprobante || 'Factura',
+                  createdBy: userName,
+                  // Información adicional relevante
+                  razonSocial: validationResult.rucEmisor || 'No especificada',
+                  montoTotal: validationResult.montoTotal || 0,
+                  moneda: validationResult.moneda || 'PEN',
+                  status: 'PENDIENTE',
+                  showAdditionalInfo: true,
+                }
+              )
+            }
+          }
+        }
+      } catch (error) {
+        this.logger.error(
+          'Error al enviar notificaciones de correo:',
+          error.message
+        )
+        // No interrumpimos el flujo, seguimos adelante aunque no se envíen las notificaciones
+      }
 
       return {
         success: true,

@@ -143,32 +143,165 @@ export class EmailService {
     }
   }
 
-  async sendInvoiceUploadedNotification(data: {
-    providerName: string
-    invoiceNumber: string
-    date: Date
-    type: string
-  }) {
-    await this.mailerService.sendMail({
-      to: 'contabilidad@empresa.com',
-      subject: 'Nueva factura subida',
-      template: 'invoice-uploaded',
-      context: data,
-    })
+  async sendInvoiceUploadedNotification(
+    email: string,
+    data: {
+      providerName: string
+      invoiceNumber: string
+      date: Date
+      type: string
+      createdBy?: string
+      razonSocial?: string
+      montoTotal?: number
+      moneda?: string
+      status?: string
+      showAdditionalInfo?: boolean
+      category?: string
+      projectName?: string
+      direccionEmisor?: string
+    }
+  ) {
+    try {
+      this.logger.debug(`Enviando notificación de factura subida a ${email}`)
+      await this.mailerService.sendMail({
+        to: email,
+        subject:
+          'Nueva factura subida por ' + (data.createdBy || data.providerName),
+        template: './invoice-notification',
+        context: {
+          logoUrl: 'https://eventuz.com/assets/images/logo1.svg',
+          providerName: data.providerName,
+          invoiceNumber: data.invoiceNumber,
+          date:
+            data.date instanceof Date
+              ? data.date.toLocaleDateString()
+              : data.date,
+          type: data.type,
+          createdBy: data.createdBy || data.providerName,
+          year: new Date().getFullYear(),
+          razonSocial: data.razonSocial,
+          montoTotal: data.montoTotal,
+          moneda: data.moneda,
+          status: data.status,
+          showAdditionalInfo: data.showAdditionalInfo,
+          category: data.category,
+          projectName: data.projectName,
+          direccionEmisor: data.direccionEmisor,
+        },
+      })
+      this.logger.debug(
+        `Notificación de factura enviada exitosamente a ${email}`
+      )
+    } catch (error) {
+      this.logger.error(`Error al enviar notificación a ${email}:`, error)
+      // No lanzamos el error para no interrumpir el flujo
+    }
   }
 
-  async sendActaUploadedNotification(data: {
-    providerName: string
-    invoiceNumber: string
-    date: Date
-    type: string
-  }) {
-    await this.mailerService.sendMail({
-      to: 'contabilidad@empresa.com',
-      subject: 'Acta de aprobación subida',
-      template: 'acta-uploaded',
-      context: data,
-    })
+  async sendActaUploadedNotification(
+    email: string,
+    data: {
+      providerName: string
+      invoiceNumber: string
+      date: Date
+      type: string
+      createdBy?: string
+      razonSocial?: string
+      montoTotal?: number
+      moneda?: string
+      status?: string
+      showAdditionalInfo?: boolean
+      category?: string
+      projectName?: string
+      direccionEmisor?: string
+    }
+  ) {
+    try {
+      this.logger.debug(`Enviando notificación de acta subida a ${email}`)
+      await this.mailerService.sendMail({
+        to: email,
+        subject:
+          'Acta de aprobación subida por ' +
+          (data.createdBy || data.providerName),
+        template: './acta-notification',
+        context: {
+          logoUrl: 'https://eventuz.com/assets/images/logo1.svg',
+          providerName: data.providerName,
+          invoiceNumber: data.invoiceNumber,
+          date:
+            data.date instanceof Date
+              ? data.date.toLocaleDateString()
+              : data.date,
+          type: data.type,
+          createdBy: data.createdBy || data.providerName,
+          year: new Date().getFullYear(),
+          razonSocial: data.razonSocial,
+          montoTotal: data.montoTotal,
+          moneda: data.moneda,
+          status: data.status,
+          showAdditionalInfo: data.showAdditionalInfo,
+          category: data.category,
+          projectName: data.projectName,
+          direccionEmisor: data.direccionEmisor,
+        },
+      })
+      this.logger.debug(`Notificación de acta enviada exitosamente a ${email}`)
+    } catch (error) {
+      this.logger.error(`Error al enviar notificación a ${email}:`, error)
+      // No lanzamos el error para no interrumpir el flujo
+    }
+  }
+
+  async sendInvoiceUploadedExpenseNotification(
+    email: string,
+    data: {
+      providerName: string
+      invoiceNumber: string
+      date: string
+      type: string
+      status: string
+      montoTotal: number
+      moneda: string
+      createdBy?: string
+      category?: string
+      projectName?: string
+      razonSocial?: string
+      direccionEmisor?: string
+    }
+  ) {
+    try {
+      this.logger.debug(`Enviando notificación de factura de gastos a ${email}`)
+      await this.mailerService.sendMail({
+        to: email,
+        subject:
+          'Nueva factura de gastos subida por ' +
+          (data.createdBy || data.providerName),
+        template: './invoice-notification',
+        context: {
+          logoUrl: 'https://eventuz.com/assets/images/logo1.svg',
+          providerName: data.providerName,
+          invoiceNumber: data.invoiceNumber,
+          date: data.date,
+          type: data.type,
+          status: data.status,
+          montoTotal: data.montoTotal,
+          moneda: data.moneda,
+          createdBy: data.createdBy || data.providerName,
+          year: new Date().getFullYear(),
+          category: data.category || 'No especificada',
+          projectName: data.projectName || 'No especificado',
+          razonSocial: data.razonSocial || 'No especificada',
+          direccionEmisor: data.direccionEmisor,
+          showAdditionalInfo: true,
+        },
+      })
+      this.logger.debug(
+        `Notificación de factura enviada exitosamente a ${email}`
+      )
+    } catch (error) {
+      this.logger.error(`Error al enviar notificación a ${email}:`, error)
+      // No lanzamos el error para no interrumpir el flujo
+    }
   }
 
   async sendInvoiceApprovedNotification(
@@ -178,6 +311,7 @@ export class EmailService {
       invoiceNumber: string
       date: string
       type: string
+      approvedBy?: string
     }
   ) {
     try {
@@ -190,6 +324,7 @@ export class EmailService {
           invoiceNumber: data.invoiceNumber,
           date: data.date,
           type: data.type,
+          approvedBy: data.approvedBy || 'Administrador del sistema',
         },
       })
     } catch (error) {
@@ -208,6 +343,7 @@ export class EmailService {
       date: string
       type: string
       rejectionReason: string
+      rejectedBy?: string
     }
   ) {
     try {
@@ -221,6 +357,7 @@ export class EmailService {
           date: data.date,
           type: data.type,
           rejectionReason: data.rejectionReason,
+          rejectedBy: data.rejectedBy || 'Administrador del sistema',
         },
       })
     } catch (error) {
@@ -311,20 +448,89 @@ export class EmailService {
     }
   }
 
-  async sendInvoiceUploadedExpenseNotification(data: {
-    providerName: string
-    invoiceNumber: string
-    date: string
-    type: string
-    status: string
-    montoTotal: number
-    moneda: string
-  }) {
-    await this.mailerService.sendMail({
-      to: 'ivantorres22_8@hotmail.com',
-      subject: 'Nueva factura de gastos subida',
-      template: 'invoice-uploaded-expense',
-      context: data,
-    })
+  // Métodos específicos para la notificación a roles ADMIN2 y COLABORADOR
+  async sendInvoiceCreatedToAdmin2(
+    email: string,
+    data: {
+      providerName: string
+      invoiceNumber: string
+      date: string
+      type: string
+      status: string
+      montoTotal: number
+      moneda: string
+      createdBy?: string
+    }
+  ) {
+    try {
+      this.logger.debug(
+        `Enviando notificación de factura creada a admin2 ${email}`
+      )
+      await this.sendInvoiceUploadedExpenseNotification(email, data)
+      this.logger.debug(
+        `Notificación de factura creada enviada exitosamente a admin2 ${email}`
+      )
+    } catch (error) {
+      this.logger.error(
+        `Error al enviar notificación a admin2 ${email}:`,
+        error
+      )
+      // No lanzamos el error para no interrumpir el flujo
+    }
+  }
+
+  async sendInvoiceApprovedToColaborador(
+    email: string,
+    data: {
+      providerName: string
+      invoiceNumber: string
+      date: string
+      type: string
+      approvedBy?: string
+    }
+  ) {
+    try {
+      this.logger.debug(
+        `Enviando notificación de factura aprobada a colaborador ${email}`
+      )
+      await this.sendInvoiceApprovedNotification(email, data)
+      this.logger.debug(
+        `Notificación de factura aprobada enviada exitosamente a colaborador ${email}`
+      )
+    } catch (error) {
+      this.logger.error(
+        `Error al enviar notificación de aprobación a colaborador ${email}:`,
+        error
+      )
+      // No lanzamos el error para no interrumpir el flujo
+    }
+  }
+
+  async sendInvoiceRejectedToColaborador(
+    email: string,
+    data: {
+      providerName: string
+      invoiceNumber: string
+      date: string
+      type: string
+      rejectionReason: string
+      rejectedBy?: string
+    }
+  ) {
+    try {
+      this.logger.debug(
+        `Enviando notificación de factura rechazada a colaborador ${email}`
+      )
+      await this.sendInvoiceRejectedNotification(email, data)
+      this.logger.debug(
+        `Notificación de factura rechazada enviada exitosamente a colaborador ${email}`
+      )
+    } catch (error) {
+      this.logger.error(
+        `Error al enviar notificación de rechazo a colaborador ${email}:`,
+        error
+      )
+      // No lanzamos el error para no interrumpir el flujo
+    }
   }
 }

@@ -74,12 +74,22 @@
       </div>
       <div class='content'>
         <p>Hola,</p>
-        <p>Se ha subido una nueva factura al sistema:</p>
+        <p>Se ha subido una nueva factura al sistema por <strong>{{createdBy}}</strong>:</p>
         <div class='details'>
           <p><strong>Proveedor:</strong> {{providerName}}</p>
           <p><strong>Número de Factura:</strong> {{invoiceNumber}}</p>
           <p><strong>Fecha:</strong> {{date}}</p>
           <p><strong>Tipo:</strong> {{type}}</p>
+          {{#if showAdditionalInfo}}
+          <p><strong>Monto Total:</strong> {{montoTotal}} {{moneda}}</p>
+          <p><strong>Categoría:</strong> {{category}}</p>
+          <p><strong>Proyecto:</strong> {{projectName}}</p>
+          <p><strong>Razón Social del Emisor:</strong> {{razonSocial}}</p>
+          {{#if direccionEmisor}}
+          <p><strong>Dirección del Emisor:</strong> {{direccionEmisor}}</p>
+          {{/if}}
+          <p><strong>Estado:</strong> {{status}}</p>
+          {{/if}}
         </div>
         <p>Puedes acceder a la factura a través del sistema.</p>
         <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>

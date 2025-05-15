@@ -60,6 +60,15 @@
                 <li><strong>Proveedor:</strong> {{providerName}}</li>
                 <li><strong>Número de Factura:</strong> {{invoiceNumber}}</li>
                 <li><strong>Fecha:</strong> {{date}}</li>
+                {{#if showAdditionalInfo}}
+                <li><strong>Tipo:</strong> {{type}}</li>
+                <li><strong>Monto Total:</strong> {{montoTotal}} {{moneda}}</li>
+                {{#if category}}<li><strong>Categoría:</strong> {{category}}</li>{{/if}}
+                {{#if projectName}}<li><strong>Proyecto:</strong> {{projectName}}</li>{{/if}}
+                {{#if razonSocial}}<li><strong>Razón Social del Emisor:</strong> {{razonSocial}}</li>{{/if}}
+                {{#if direccionEmisor}}<li><strong>Dirección del Emisor:</strong> {{direccionEmisor}}</li>{{/if}}
+                {{#if status}}<li><strong>Estado:</strong> {{status}}</li>{{/if}}
+                {{/if}}
             </ul>
             <p>Puedes revisar el estado de la factura en el sistema.</p>
             <a href="#" class="button">Ver Factura</a>
