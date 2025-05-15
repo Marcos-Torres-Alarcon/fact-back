@@ -15,7 +15,7 @@ import { EmailService } from '../email/email.service'
 import { PROMPT1 } from './constants/prompt1'
 import OpenAI from 'openai'
 import { CategoryService } from '../category/category.service'
-import { ProjectService } from '../project/project.service'
+import { ProjectTypeService } from '../project/project-type.service'
 
 @Injectable()
 export class ExpenseService {
@@ -29,7 +29,7 @@ export class ExpenseService {
     private expenseRepository: Model<Expense>,
     private readonly emailService: EmailService,
     private readonly categoryService: CategoryService,
-    private readonly projectService: ProjectService
+    private readonly projectTypeService: ProjectTypeService
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY')
     if (!apiKey) {
@@ -44,15 +44,9 @@ export class ExpenseService {
     category: string
   ): Promise<void> {
     try {
-      // Verificar si existe el proyecto
+      // Verificar si existe el proyecto (usando ProjectTypeService)
       if (proyect) {
-        // Crear un usuario admin ficticio para usar en la búsqueda
-        const adminUser = {
-          role: 'ADMIN' as 'ADMIN',
-          _id: new Types.ObjectId(),
-          email: 'admin@system.com',
-        }
-        await this.projectService.findOne(proyect, adminUser)
+        await this.projectTypeService.findOne(proyect)
       }
 
       // Verificar si existe la categoría (por key)
