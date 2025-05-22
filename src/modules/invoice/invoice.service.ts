@@ -17,7 +17,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { firstValueFrom } from 'rxjs'
 import { EmailService } from '../email/email.service'
-import { UserService } from '../user/user.service'
+import { UsersService } from '../users/services/users.service'
 import { UserRole } from '../auth/enums/user-role.enum'
 import { ClientService } from '../client/client.service'
 
@@ -42,7 +42,7 @@ export class InvoiceService {
     private invoiceModel: Model<Invoice>,
     private readonly httpService: HttpService,
     private readonly emailService: EmailService,
-    private readonly userService: UserService,
+    private readonly usersService: UsersService,
     private readonly clientService: ClientService
   ) {
     // Asegurarse de que el directorio temporal existe y tiene permisos
@@ -73,7 +73,9 @@ export class InvoiceService {
     const savedInvoice = await createdInvoice.save()
 
     // Obtener usuarios con roles específicos
-    const users = await this.userService.findAll({ role: UserRole.ADMIN })
+    const users = (await this.usersService.findAll()).filter(
+      u => u.role === UserRole.ADMIN
+    )
     const usersToNotify = users.filter(
       u => u.role === UserRole.ACCOUNTING || u.role === UserRole.COMPANY
     )
@@ -197,8 +199,8 @@ export class InvoiceService {
 
       // Obtener usuarios con rol de tesorería activos
       this.logger.debug('[DEBUG] Buscando usuarios de tesorería activos...')
-      const treasuryUsers = await this.userService.findByRoleAndStatus(
-        UserRole.TREASURY
+      const treasuryUsers = (await this.usersService.findAll()).filter(
+        u => u.role === UserRole.TREASURY && u.isActive
       )
 
       this.logger.debug(
@@ -711,9 +713,8 @@ export class InvoiceService {
 
       // Obtener usuarios con roles específicos para enviar notificaciones
       try {
-        const admins = await this.userService.findByRoleAndStatus(
-          UserRole.ADMIN2,
-          true
+        const admins = (await this.usersService.findAll()).filter(
+          u => u.role === UserRole.ADMIN2 && u.isActive
         )
 
         // Obtener el nombre completo del usuario para los correos
@@ -874,8 +875,8 @@ export class InvoiceService {
 
       // Obtener usuarios con rol de proveedor
       this.logger.debug('[DEBUG] Buscando usuarios proveedores...')
-      const providers = await this.userService.findByRoleAndStatus(
-        UserRole.PROVIDER
+      const providers = (await this.usersService.findAll()).filter(
+        u => u.role === UserRole.PROVIDER && u.isActive
       )
 
       this.logger.debug(`[DEBUG] Proveedores encontrados: ${providers.length}`)
@@ -968,8 +969,8 @@ export class InvoiceService {
       )
 
       // Obtener todos los proveedores activos
-      const providers = await this.userService.findByRoleAndStatus(
-        UserRole.PROVIDER
+      const providers = (await this.usersService.findAll()).filter(
+        u => u.role === UserRole.PROVIDER && u.isActive
       )
 
       // Enviar notificación a todos los proveedores

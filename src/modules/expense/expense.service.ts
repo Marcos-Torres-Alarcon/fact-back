@@ -17,7 +17,7 @@ import OpenAI from 'openai'
 import { CategoryService } from '../category/category.service'
 import { ProjectTypeService } from '../project/project-type.service'
 import { ApprovalDto } from './dto/approval.dto'
-import { UserService } from '../user/user.service'
+import { UsersService } from '../users/services/users.service'
 import { UserRole } from '../auth/enums/user-role.enum'
 
 @Injectable()
@@ -33,7 +33,7 @@ export class ExpenseService {
     private readonly emailService: EmailService,
     private readonly categoryService: CategoryService,
     private readonly projectTypeService: ProjectTypeService,
-    private readonly userService: UserService
+    private readonly usersService: UsersService
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY')
     if (!apiKey) {
@@ -107,9 +107,8 @@ export class ExpenseService {
       })
 
       try {
-        const admins = await this.userService.findByRoleAndStatus(
-          UserRole.ADMIN2,
-          true
+        const admins = (await this.usersService.findAll()).filter(
+          u => u.role === UserRole.ADMIN2 && u.isActive
         )
 
         if (admins && admins.length > 0) {
@@ -118,9 +117,7 @@ export class ExpenseService {
 
           if (creatorId) {
             try {
-              const creator = await this.userService.findOne(creatorId, {
-                role: UserRole.ADMIN,
-              })
+              const creator = await this.usersService.findOne(creatorId)
               if (creator) {
                 creatorName =
                   creator.firstName && creator.lastName
@@ -164,9 +161,7 @@ export class ExpenseService {
 
           if (body.userId) {
             try {
-              const creator = await this.userService.findOne(body.userId, {
-                role: UserRole.ADMIN,
-              })
+              const creator = await this.usersService.findOne(body.userId)
               if (creator && creator.email) {
                 const creatorFullName =
                   creator.firstName && creator.lastName
@@ -205,10 +200,7 @@ export class ExpenseService {
         }
 
         try {
-          const colaboradores = await this.userService.findByRoleAndStatus(
-            UserRole.COLABORADOR,
-            true
-          )
+          const colaboradores = await this.usersService.findAll()
 
           if (colaboradores && colaboradores.length > 0) {
             this.logger.debug(
@@ -220,9 +212,7 @@ export class ExpenseService {
 
             if (creatorId) {
               try {
-                const creator = await this.userService.findOne(creatorId, {
-                  role: UserRole.ADMIN,
-                })
+                const creator = await this.usersService.findOne(creatorId)
                 if (creator) {
                   creatorName =
                     creator.firstName && creator.lastName
@@ -359,7 +349,7 @@ export class ExpenseService {
         )
 
         try {
-          const userByEmail = await this.userService.findByEmail(
+          const userByEmail = await this.usersService.findByEmail(
             approvalDto.userId
           )
           if (userByEmail) {
@@ -400,9 +390,7 @@ export class ExpenseService {
         )
       } else if (validUserId) {
         try {
-          const approver = await this.userService.findOne(validUserId, {
-            role: UserRole.ADMIN,
-          })
+          const approver = await this.usersService.findOne(validUserId)
           if (approver) {
             approverName =
               approver.firstName && approver.lastName
@@ -431,9 +419,7 @@ export class ExpenseService {
             return updatedExpense
           }
 
-          const creator = await this.userService.findOne(expense.createdBy, {
-            role: UserRole.ADMIN,
-          })
+          const creator = await this.usersService.findOne(expense.createdBy)
 
           if (creator && creator.email) {
             const creatorFullName =
@@ -500,10 +486,7 @@ export class ExpenseService {
       }
 
       try {
-        const colaboradores = await this.userService.findByRoleAndStatus(
-          UserRole.COLABORADOR,
-          true
-        )
+        const colaboradores = await this.usersService.findAll()
 
         if (colaboradores && colaboradores.length > 0) {
           this.logger.debug(
@@ -595,7 +578,7 @@ export class ExpenseService {
         )
 
         try {
-          const userByEmail = await this.userService.findByEmail(
+          const userByEmail = await this.usersService.findByEmail(
             approvalDto.userId
           )
           if (userByEmail) {
@@ -637,9 +620,7 @@ export class ExpenseService {
         )
       } else if (validUserId) {
         try {
-          const rejector = await this.userService.findOne(validUserId, {
-            role: UserRole.ADMIN,
-          })
+          const rejector = await this.usersService.findOne(validUserId)
           if (rejector) {
             rejectorName =
               rejector.firstName && rejector.lastName
@@ -670,9 +651,7 @@ export class ExpenseService {
             return updatedExpense
           }
 
-          const creator = await this.userService.findOne(expense.createdBy, {
-            role: UserRole.ADMIN,
-          })
+          const creator = await this.usersService.findOne(expense.createdBy)
 
           if (creator && creator.email) {
             const creatorFullName =
@@ -741,10 +720,7 @@ export class ExpenseService {
       }
 
       try {
-        const colaboradores = await this.userService.findByRoleAndStatus(
-          UserRole.COLABORADOR,
-          true
-        )
+        const colaboradores = await this.usersService.findAll()
 
         if (colaboradores && colaboradores.length > 0) {
           this.logger.debug(
