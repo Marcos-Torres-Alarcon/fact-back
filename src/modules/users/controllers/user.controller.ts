@@ -24,15 +24,15 @@ import {
 } from '@nestjs/swagger'
 import { User } from '../entities/user.entity'
 
-@ApiTags('users')
-@Controller('users')
+@ApiTags('user2')
+@Controller('user2')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class UserController {
   constructor(private readonly userService: UsersService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Create a new user' })
   @ApiResponse({
     status: 201,
@@ -46,7 +46,7 @@ export class UserController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, description: 'Return all users', type: [User] })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -55,7 +55,7 @@ export class UserController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Get a user by id' })
   @ApiResponse({ status: 200, description: 'Return the user', type: User })
   @ApiResponse({ status: 404, description: 'User not found' })
@@ -65,7 +65,7 @@ export class UserController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Update a user' })
   @ApiResponse({
     status: 200,
@@ -79,7 +79,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Delete a user' })
   @ApiResponse({ status: 200, description: 'User deleted successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })

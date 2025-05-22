@@ -31,8 +31,8 @@ import { UserRole } from '../auth/enums/user-role.enum'
 import { Request as ExpressRequest } from 'express'
 import { UserDocument } from './entities/user.entity'
 
-@ApiTags('users')
-@Controller('users')
+@ApiTags('user3')
+@Controller('users3')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class UserController {
@@ -41,7 +41,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Crear un nuevo usuario' })
   @ApiResponse({
     status: 201,
@@ -66,7 +66,7 @@ export class UserController {
   }
 
   @Post('provider')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Crear un nuevo proveedor' })
   @ApiResponse({
     status: 201,
@@ -95,7 +95,7 @@ export class UserController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.PROVIDER)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.PROVIDER, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Obtener usuarios según permisos' })
   @ApiResponse({
     status: 200,
@@ -122,7 +122,7 @@ export class UserController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Obtener un usuario por ID' })
   @ApiResponse({
     status: 200,
@@ -153,7 +153,7 @@ export class UserController {
   }
 
   @Get('email/:email')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Obtener un usuario por email' })
   @ApiResponse({
     status: 200,
@@ -187,7 +187,7 @@ export class UserController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Actualizar un usuario' })
   @ApiResponse({
     status: 200,
@@ -219,7 +219,7 @@ export class UserController {
   }
 
   @Patch(':id/role')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Actualizar el rol de un usuario' })
   @ApiResponse({
     status: 200,
@@ -252,7 +252,7 @@ export class UserController {
   }
 
   @Patch(':id/status')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Actualizar el estado de un usuario' })
   @ApiResponse({
     status: 200,
@@ -285,7 +285,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Eliminar un usuario' })
   @ApiResponse({
     status: 200,
