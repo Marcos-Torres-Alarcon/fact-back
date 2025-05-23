@@ -1,14 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document, Schema as MongooseSchema } from 'mongoose'
+import { Document, Types } from 'mongoose'
 import { ApiProperty } from '@nestjs/swagger'
 import { ProjectStatus } from '../dto/create-project.dto'
 
 export interface ProjectDocument extends Document {
   name: string
   description: string
-  clientId: MongooseSchema.Types.ObjectId
-  companyId: MongooseSchema.Types.ObjectId
-  providerId?: MongooseSchema.Types.ObjectId
+  clientId: Types.ObjectId
+  companyId: Types.ObjectId
+  providerId?: Types.ObjectId
   status: ProjectStatus
   startDate: Date
   endDate: Date
@@ -21,9 +21,9 @@ export interface ProjectDocument extends Document {
   workNotes?: string
   workAttachments?: string[]
   workApproved?: boolean
-  workApprovedBy?: MongooseSchema.Types.ObjectId
+  workApprovedBy?: Types.ObjectId
   workApprovedDate?: Date
-  invoiceId?: MongooseSchema.Types.ObjectId
+  invoiceId?: Types.ObjectId
   invoiceStatus?: string
   paymentStatus?: string
   paymentDate?: Date
@@ -56,23 +56,23 @@ export class Project {
     description: 'ID del cliente asociado al proyecto',
     example: '507f1f77bcf86cd799439011',
   })
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Client', required: true })
-  clientId: MongooseSchema.Types.ObjectId
+  @Prop({ type: Types.ObjectId, ref: 'Client', required: true })
+  clientId: Types.ObjectId
 
   @ApiProperty({
     description: 'ID de la compañía asociada al proyecto',
     example: '507f1f77bcf86cd799439012',
   })
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Company', required: true })
-  companyId: MongooseSchema.Types.ObjectId
+  @Prop({ type: Types.ObjectId, ref: 'Company', required: true })
+  companyId: Types.ObjectId
 
   @ApiProperty({
     description: 'ID del proveedor asignado al proyecto',
     example: '507f1f77bcf86cd799439013',
     required: false,
   })
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Provider' })
-  providerId?: MongooseSchema.Types.ObjectId
+  @Prop({ ref: 'Provider' })
+  providerId: Types.ObjectId
 
   @ApiProperty({
     description: 'Estado del proyecto',
@@ -109,7 +109,7 @@ export class Project {
     required: false,
   })
   @Prop()
-  notes?: string
+  notes: string
 
   @ApiProperty({
     description: 'Estado de actividad del proyecto',
@@ -124,7 +124,7 @@ export class Project {
     required: false,
   })
   @Prop()
-  workStatus?: string
+  workStatus: string
 
   @ApiProperty({
     description: 'Fecha de inicio del trabajo',
@@ -140,7 +140,7 @@ export class Project {
     required: false,
   })
   @Prop()
-  workEndDate?: Date
+  workEndDate: Date
 
   @ApiProperty({
     description: 'Notas sobre el trabajo realizado',
@@ -164,15 +164,15 @@ export class Project {
     required: false,
   })
   @Prop()
-  workApproved?: boolean
+  workApproved: boolean
 
   @ApiProperty({
     description: 'Usuario que aprobó el trabajo',
     example: '507f1f77bcf86cd799439014',
     required: false,
   })
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
-  workApprovedBy?: MongooseSchema.Types.ObjectId
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  workApprovedBy: Types.ObjectId
 
   @ApiProperty({
     description: 'Fecha de aprobación del trabajo',
@@ -180,15 +180,15 @@ export class Project {
     required: false,
   })
   @Prop()
-  workApprovedDate?: Date
+  workApprovedDate: Date
 
   @ApiProperty({
     description: 'ID de la factura asociada',
     example: '507f1f77bcf86cd799439015',
     required: false,
   })
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Invoice' })
-  invoiceId?: MongooseSchema.Types.ObjectId
+  @Prop({ type: Types.ObjectId, ref: 'Invoice' })
+  invoiceId: Types.ObjectId
 
   @ApiProperty({
     description: 'Estado de la factura',
@@ -204,7 +204,7 @@ export class Project {
     required: false,
   })
   @Prop()
-  paymentStatus?: string
+  paymentStatus: string
 
   @ApiProperty({
     description: 'Fecha del pago',
@@ -212,7 +212,7 @@ export class Project {
     required: false,
   })
   @Prop()
-  paymentDate?: Date
+  paymentDate: Date
 
   @ApiProperty({
     description: 'Fecha de completado del proyecto',
@@ -220,7 +220,7 @@ export class Project {
     required: false,
   })
   @Prop()
-  completedAt?: Date
+  completedAt: Date
 
   @ApiProperty({
     description: 'Fecha de creación',

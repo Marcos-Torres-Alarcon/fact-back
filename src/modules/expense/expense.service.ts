@@ -14,12 +14,10 @@ import { InjectModel } from '@nestjs/mongoose'
 import { EmailService } from '../email/email.service'
 import { PROMPT1 } from './constants/prompt1'
 import OpenAI from 'openai'
-import { CategoryService } from '../category/category.service'
-import { ProjectTypeService } from '../project/project-type.service'
 import { ApprovalDto } from './dto/approval.dto'
 import { UserService } from '../user/user.service'
 import { UserRole } from '../auth/enums/user-role.enum'
-
+import { ProjectService } from '../project/project.service'
 @Injectable()
 export class ExpenseService {
   private readonly logger = new Logger(ExpenseService.name)
@@ -31,9 +29,8 @@ export class ExpenseService {
     @InjectModel(Expense.name)
     private expenseRepository: Model<Expense>,
     private readonly emailService: EmailService,
-    private readonly categoryService: CategoryService,
-    private readonly projectTypeService: ProjectTypeService,
-    private readonly userService: UserService
+    private readonly userService: UserService,
+    private readonly projectService: ProjectService
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY')
     if (!apiKey) {
@@ -42,33 +39,10 @@ export class ExpenseService {
     this.openai = new OpenAI({ apiKey })
   }
 
-  async validateCategoryAndProject(
-    proyect: string,
-    category: string
-  ): Promise<void> {
-    try {
-      if (proyect) {
-        await this.projectTypeService.findOne(proyect)
-      }
-
-      if (category) {
-        await this.categoryService.findByKey(category)
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error al validar categoría o proyecto: ${error.message}`
-      )
-      throw new NotFoundException(
-        'Categoría o proyecto no encontrado: ' + error.message
-      )
-    }
-  }
-
   async analyzeImageWithUrl(body: CreateExpenseDto): Promise<Expense> {
     console.log(body)
     const prompt = PROMPT1
     try {
-      await this.validateCategoryAndProject(body.proyect, body.category)
 
       const response = await this.openai.chat.completions.create({
         model: this.visionModel,
@@ -95,16 +69,17 @@ export class ExpenseService {
         .trim()
       const jsonObject = JSON.parse(jsonStringLimpio)
 
-      console.log(jsonObject)
-
       const expense = await this.expenseRepository.create({
         ...body,
+        projectId: Types.ObjectId.createFromHexString(body.proyectId),
         total: jsonObject.montoTotal,
         data: JSON.stringify(jsonObject),
         file: body.imageUrl,
         status: 'pending',
         createdBy: body.userId,
       })
+
+      const project = await this.projectService.findOne2(body.proyectId)
 
       try {
         const admins = await this.userService.findByRoleAndStatus(
@@ -140,9 +115,8 @@ export class ExpenseService {
                 admin.email,
                 {
                   providerName: creatorName,
-                  invoiceNumber: `${jsonObject.serie || ''}-${
-                    jsonObject.correlativo || ''
-                  }`,
+                  invoiceNumber: `${jsonObject.serie || ''}-${jsonObject.correlativo || ''
+                    }`,
                   date:
                     jsonObject.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -152,7 +126,7 @@ export class ExpenseService {
                   moneda: jsonObject.moneda || 'PEN',
                   createdBy: creatorName,
                   category: body.category || 'No especificada',
-                  projectName: body.projectName || 'No especificado',
+                  projectName: project.name || 'No especificado',
                   razonSocial: jsonObject.razonSocial || 'No especificada',
                   direccionEmisor: jsonObject.direccionEmisor,
                 }
@@ -177,9 +151,8 @@ export class ExpenseService {
                   creator.email,
                   {
                     providerName: creatorFullName,
-                    invoiceNumber: `${jsonObject.serie || ''}-${
-                      jsonObject.correlativo || ''
-                    }`,
+                    invoiceNumber: `${jsonObject.serie || ''}-${jsonObject.correlativo || ''
+                      }`,
                     date:
                       jsonObject.fechaEmision ||
                       new Date().toISOString().split('T')[0],
@@ -189,7 +162,7 @@ export class ExpenseService {
                     moneda: jsonObject.moneda || 'PEN',
                     createdBy: creatorFullName,
                     category: body.category || 'No especificada',
-                    projectName: body.projectName || 'No especificado',
+                    projectName: project.name || 'No especificado',
                     razonSocial: jsonObject.razonSocial || 'No especificada',
                     direccionEmisor: jsonObject.direccionEmisor,
                   }
@@ -243,9 +216,8 @@ export class ExpenseService {
                     colaborador.email,
                     {
                       providerName: creatorName,
-                      invoiceNumber: `${jsonObject.serie || ''}-${
-                        jsonObject.correlativo || ''
-                      }`,
+                      invoiceNumber: `${jsonObject.serie || ''}-${jsonObject.correlativo || ''
+                        }`,
                       date:
                         jsonObject.fechaEmision ||
                         new Date().toISOString().split('T')[0],
@@ -255,7 +227,7 @@ export class ExpenseService {
                       moneda: jsonObject.moneda || 'PEN',
                       createdBy: creatorName,
                       category: body.category || 'No especificada',
-                      projectName: body.projectName || 'No especificado',
+                      projectName: project.name || 'No especificado',
                       razonSocial: jsonObject.razonSocial || 'No especificada',
                       direccionEmisor: jsonObject.direccionEmisor,
                     }
@@ -297,10 +269,6 @@ export class ExpenseService {
   }
 
   async create(createExpenseDto: CreateExpenseDto) {
-    await this.validateCategoryAndProject(
-      createExpenseDto.proyect,
-      createExpenseDto.category
-    )
     return this.expenseRepository.create({
       ...createExpenseDto,
       status: 'pending',
@@ -308,7 +276,7 @@ export class ExpenseService {
   }
 
   findAll() {
-    return this.expenseRepository.find().exec()
+    return this.expenseRepository.find().populate('proyectId').exec()
   }
 
   findOne(id: string) {
@@ -316,17 +284,6 @@ export class ExpenseService {
   }
 
   async update(id: string, updateExpenseDto: UpdateExpenseDto) {
-    if (updateExpenseDto.category || updateExpenseDto.proyect) {
-      const expense = await this.findOne(id)
-      if (!expense) {
-        throw new NotFoundException(`Gasto con ID ${id} no encontrado`)
-      }
-      await this.validateCategoryAndProject(
-        updateExpenseDto.proyect || expense.proyect,
-        updateExpenseDto.category || expense.category
-      )
-    }
-
     return this.expenseRepository
       .findByIdAndUpdate(id, updateExpenseDto, { new: true })
       .exec()
@@ -450,9 +407,8 @@ export class ExpenseService {
                 creator.email,
                 {
                   providerName: creatorFullName,
-                  invoiceNumber: `${invoiceData.serie || ''}-${
-                    invoiceData.correlativo || ''
-                  }`,
+                  invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
+                    }`,
                   date:
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -468,9 +424,8 @@ export class ExpenseService {
                 creator.email,
                 {
                   providerName: creatorFullName,
-                  invoiceNumber: `${invoiceData.serie || ''}-${
-                    invoiceData.correlativo || ''
-                  }`,
+                  invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
+                    }`,
                   date:
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -522,9 +477,8 @@ export class ExpenseService {
                       colaborador.firstName && colaborador.lastName
                         ? `${colaborador.firstName} ${colaborador.lastName}`
                         : colaborador.email,
-                    invoiceNumber: `${invoiceData.serie || ''}-${
-                      invoiceData.correlativo || ''
-                    }`,
+                    invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
+                      }`,
                     date:
                       invoiceData.fechaEmision ||
                       new Date().toISOString().split('T')[0],
@@ -689,9 +643,8 @@ export class ExpenseService {
                 creator.email,
                 {
                   providerName: creatorFullName,
-                  invoiceNumber: `${invoiceData.serie || ''}-${
-                    invoiceData.correlativo || ''
-                  }`,
+                  invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
+                    }`,
                   date:
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -708,9 +661,8 @@ export class ExpenseService {
                 creator.email,
                 {
                   providerName: creatorFullName,
-                  invoiceNumber: `${invoiceData.serie || ''}-${
-                    invoiceData.correlativo || ''
-                  }`,
+                  invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
+                    }`,
                   date:
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -763,9 +715,8 @@ export class ExpenseService {
                       colaborador.firstName && colaborador.lastName
                         ? `${colaborador.firstName} ${colaborador.lastName}`
                         : colaborador.email,
-                    invoiceNumber: `${invoiceData.serie || ''}-${
-                      invoiceData.correlativo || ''
-                    }`,
+                    invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
+                      }`,
                     date:
                       invoiceData.fechaEmision ||
                       new Date().toISOString().split('T')[0],

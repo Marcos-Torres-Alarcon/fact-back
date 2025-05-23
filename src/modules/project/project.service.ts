@@ -1,10 +1,6 @@
 import {
   Injectable,
-  HttpException,
-  HttpStatus,
   NotFoundException,
-  ForbiddenException,
-  BadRequestException,
 } from '@nestjs/common'
 import {
   CreateProjectDto,
@@ -12,20 +8,17 @@ import {
   UpdateProjectStatusDto,
   UpdateWorkStatusDto,
   ApproveWorkDto,
-  WorkStatus,
 } from './dto/create-project.dto'
-import { UpdateProjectDto } from './dto/update-project.dto'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
 import { Project, ProjectDocument } from './entities/project.entity'
-import { UserRole } from '../user/entities/user-role.entity'
 import { IUser } from '../auth/interfaces/user.interface'
 
 @Injectable()
 export class ProjectService {
   constructor(
     @InjectModel(Project.name) private projectModel: Model<Project>
-  ) {}
+  ) { }
 
   async create(
     createProjectDto: CreateProjectDto,
@@ -47,6 +40,10 @@ export class ProjectService {
       .find(query)
       .populate('providerId', 'firstName lastName')
       .exec()
+  }
+
+  findOne2(id: string) {
+    return this.projectModel.findById(id).exec()
   }
 
   async findOne(id: string, user: IUser): Promise<Project> {

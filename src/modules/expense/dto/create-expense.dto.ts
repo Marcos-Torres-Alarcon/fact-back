@@ -9,16 +9,7 @@ export class CreateExpenseDto {
   })
   @IsString()
   @IsNotEmpty()
-  proyect: string
-
-  @ApiProperty({
-    description: 'Nombre del proyecto asociado',
-    example: 'Proyecto A',
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  projectName?: string
+  proyectId: string
 
   @ApiProperty({
     description: 'Clave de la categoría asociada',

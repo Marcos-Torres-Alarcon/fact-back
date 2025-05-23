@@ -1,15 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document } from 'mongoose'
+import { Document, Types } from 'mongoose'
 import { ApiProperty } from '@nestjs/swagger'
 
 export type ExpenseStatus = 'pending' | 'approved' | 'rejected'
 
 export interface ExpenseDocument extends Document {
-  proyect: string
-  projectName?: string
+  proyectId: Types.ObjectId
   total: number
   description: string
-  category: string
+  categoryId: Types.ObjectId
   file: string
   data: string
   status?: ExpenseStatus
@@ -29,16 +28,9 @@ export class Expense {
     description: 'ID del proyecto',
     example: '6543210abcdef',
   })
-  @Prop({ required: true })
-  proyect: string
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Project' })
+  proyectId: Types.ObjectId
 
-  @ApiProperty({
-    description: 'Nombre del proyecto',
-    example: 'Proyecto A',
-    required: false,
-  })
-  @Prop()
-  projectName: string
 
   @ApiProperty({
     description: 'Total de la factura',
@@ -59,8 +51,8 @@ export class Expense {
     description: 'Categoría de la factura',
     example: 'Transporte',
   })
-  @Prop({ required: true })
-  category: string
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Category' })
+  categoryId: Types.ObjectId
 
   @ApiProperty({
     description: 'URL del archivo',
