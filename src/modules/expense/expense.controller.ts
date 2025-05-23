@@ -17,55 +17,53 @@ import { ApprovalDto } from './dto/approval.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { Roles } from '../auth/decorators/roles.decorator'
 import { UserRole } from '../auth/enums/user-role.enum'
+import { RolesGuard } from '../auth/guards/roles.guard'
 
 @Controller('expense')
-@UseGuards(JwtAuthGuard)
 export class ExpenseController {
   private readonly logger = new Logger(ExpenseController.name)
 
-  constructor(private readonly expenseService: ExpenseService) { }
+  constructor(private readonly expenseService: ExpenseService) {}
 
   @Post('analyze-image')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
   analyzeImage(@Body() body: CreateExpenseDto, @Request() req) {
     return this.expenseService.analyzeImageWithUrl(body)
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   create(@Body() createExpenseDto: CreateExpenseDto, @Request() req) {
     const companyId = req.user.companyId
     return this.expenseService.create(createExpenseDto, companyId)
   }
 
-  @Get()
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
-  findAll(@Request() req) {
-    this.logger.debug(
-      `Usuario autenticado en findAll: ${JSON.stringify(req.user)}`
-    )
-    const companyId = req.user.companyId
-    this.logger.debug(
-      `companyId recibido en findAll: ${companyId} (tipo: ${typeof companyId})`
-    )
+  @Get(':companyId')
+  findAll(@Param('companyId') companyId: string) {
     return this.expenseService.findAll(companyId)
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string, @Request() req) {
-    const companyId = req.user.companyId
+  @Get(':id/:companyId')
+  findOne(@Param('id') id: string, @Param('companyId') companyId: string) {
     return this.expenseService.findOne(id, companyId)
   }
 
-  @Patch(':id')
+  @Patch(':id/:companyId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   update(
     @Param('id') id: string,
-    @Body() updateExpenseDto: UpdateExpenseDto,
-    @Request() req
+    @Param('companyId') companyId: string,
+    @Body() updateExpenseDto: UpdateExpenseDto
   ) {
-    const companyId = req.user.companyId
     return this.expenseService.update(id, updateExpenseDto, companyId)
   }
 
-  @Patch(':id/approve')
+  @Patch(':id/:companyId/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   approveInvoice(
     @Param('id') id: string,
     @Body() approvalDto: ApprovalDto,
@@ -92,7 +90,9 @@ export class ExpenseController {
     return this.expenseService.approveInvoice(id, approvalDto, companyId)
   }
 
-  @Patch(':id/reject')
+  @Patch(':id/:companyId/reject')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   rejectInvoice(
     @Param('id') id: string,
     @Body() approvalDto: ApprovalDto,
@@ -119,9 +119,10 @@ export class ExpenseController {
     return this.expenseService.rejectInvoice(id, approvalDto, companyId)
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string, @Request() req) {
-    const companyId = req.user.companyId
+  @Delete(':id/:companyId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
+  remove(@Param('id') id: string, @Param('companyId') companyId: string) {
     return this.expenseService.remove(id, companyId)
   }
 }

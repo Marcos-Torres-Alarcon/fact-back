@@ -33,9 +33,9 @@ export class CategoryService {
     }
   }
 
-  async findAll(): Promise<CategoryDocument[]> {
+  async findAll(companyId: string): Promise<CategoryDocument[]> {
     try {
-      return await this.categoryModel.find().exec()
+      return await this.categoryModel.find({ companyId }).exec()
     } catch (error) {
       this.logger.error(
         `Error al obtener categorías: ${error.message}`,
@@ -45,9 +45,11 @@ export class CategoryService {
     }
   }
 
-  async findOne(id: string): Promise<CategoryDocument> {
+  async findOne(id: string, companyId: string): Promise<CategoryDocument> {
     try {
-      const category = await this.categoryModel.findById(id).exec()
+      const category = await this.categoryModel
+        .findOne({ _id: id, companyId })
+        .exec()
       if (!category) {
         throw new NotFoundException(`Categoría con ID ${id} no encontrada`)
       }
@@ -61,9 +63,11 @@ export class CategoryService {
     }
   }
 
-  async findByKey(key: string): Promise<CategoryDocument> {
+  async findByKey(key: string, companyId: string): Promise<CategoryDocument> {
     try {
-      const category = await this.categoryModel.findOne({ key }).exec()
+      const category = await this.categoryModel
+        .findOne({ key, companyId })
+        .exec()
       if (!category) {
         throw new NotFoundException(`Categoría con clave ${key} no encontrada`)
       }
@@ -79,19 +83,22 @@ export class CategoryService {
 
   async update(
     id: string,
-    updateCategoryDto: UpdateCategoryDto
+    updateCategoryDto: UpdateCategoryDto,
+    companyId: string
   ): Promise<CategoryDocument> {
     try {
       if (
         updateCategoryDto.name &&
         !updateCategoryDto.key &&
-        updateCategoryDto.name !== (await this.findOne(id)).name
+        updateCategoryDto.name !== (await this.findOne(id, companyId)).name
       ) {
         updateCategoryDto.key = this.generateKey(updateCategoryDto.name)
       }
 
       const updatedCategory = await this.categoryModel
-        .findByIdAndUpdate(id, updateCategoryDto, { new: true })
+        .findOneAndUpdate({ _id: id, companyId }, updateCategoryDto, {
+          new: true,
+        })
         .exec()
 
       if (!updatedCategory) {
@@ -108,9 +115,11 @@ export class CategoryService {
     }
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, companyId: string): Promise<void> {
     try {
-      const result = await this.categoryModel.findByIdAndDelete(id).exec()
+      const result = await this.categoryModel
+        .findOneAndDelete({ _id: id, companyId })
+        .exec()
       if (!result) {
         throw new NotFoundException(`Categoría con ID ${id} no encontrada`)
       }

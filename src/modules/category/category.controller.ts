@@ -24,13 +24,13 @@ import { UserRole } from '../auth/enums/user-role.enum'
 
 @ApiTags('categories')
 @Controller('categories')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) { }
+  constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Crear una nueva categoría' })
   @ApiResponse({
     status: 201,
@@ -41,38 +41,40 @@ export class CategoryController {
     return this.categoryService.create(createCategoryDto)
   }
 
-  @Get()
-  // @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
-  @ApiOperation({ summary: 'Obtener todas las categorías' })
+  @Get(':companyId')
+  @ApiOperation({ summary: 'Obtener todas las categorías de una empresa' })
   @ApiResponse({
     status: 200,
     description: 'Lista de categorías obtenida exitosamente',
   })
-  findAll() {
-    return this.categoryService.findAll()
+  findAll(@Param('companyId') companyId: string) {
+    return this.categoryService.findAll(companyId)
   }
 
-  @Get(':id')
+  @Get(':id/:companyId')
   @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
-  @ApiOperation({ summary: 'Obtener una categoría por ID' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Obtener una categoría por ID y empresa' })
   @ApiResponse({ status: 200, description: 'Categoría obtenida exitosamente' })
   @ApiResponse({ status: 404, description: 'Categoría no encontrada' })
-  findOne(@Param('id') id: string) {
-    return this.categoryService.findOne(id)
+  findOne(@Param('id') id: string, @Param('companyId') companyId: string) {
+    return this.categoryService.findOne(id, companyId)
   }
 
-  @Get('key/:key')
+  @Get('key/:key/:companyId')
   @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
-  @ApiOperation({ summary: 'Obtener una categoría por clave' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Obtener una categoría por clave y empresa' })
   @ApiResponse({ status: 200, description: 'Categoría obtenida exitosamente' })
   @ApiResponse({ status: 404, description: 'Categoría no encontrada' })
-  findByKey(@Param('key') key: string) {
-    return this.categoryService.findByKey(key)
+  findByKey(@Param('key') key: string, @Param('companyId') companyId: string) {
+    return this.categoryService.findByKey(key, companyId)
   }
 
-  @Patch(':id')
+  @Patch(':id/:companyId')
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
-  @ApiOperation({ summary: 'Actualizar una categoría por ID' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Actualizar una categoría por ID y empresa' })
   @ApiResponse({
     status: 200,
     description: 'Categoría actualizada exitosamente',
@@ -80,17 +82,19 @@ export class CategoryController {
   @ApiResponse({ status: 404, description: 'Categoría no encontrada' })
   update(
     @Param('id') id: string,
+    @Param('companyId') companyId: string,
     @Body() updateCategoryDto: UpdateCategoryDto
   ) {
-    return this.categoryService.update(id, updateCategoryDto)
+    return this.categoryService.update(id, updateCategoryDto, companyId)
   }
 
-  @Delete(':id')
+  @Delete(':id/:companyId')
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
-  @ApiOperation({ summary: 'Eliminar una categoría por ID' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Eliminar una categoría por ID y empresa' })
   @ApiResponse({ status: 200, description: 'Categoría eliminada exitosamente' })
   @ApiResponse({ status: 404, description: 'Categoría no encontrada' })
-  remove(@Param('id') id: string) {
-    return this.categoryService.remove(id)
+  remove(@Param('id') id: string, @Param('companyId') companyId: string) {
+    return this.categoryService.remove(id, companyId)
   }
 }

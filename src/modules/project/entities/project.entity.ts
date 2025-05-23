@@ -61,10 +61,10 @@ export class Project {
 
   @ApiProperty({
     description: 'ID de la compañía asociada al proyecto',
-    example: '507f1f77bcf86cd799439012',
+    example: '664f0e2b2f4b2c0012a12345',
   })
-  @Prop({ type: Types.ObjectId, ref: 'Company', required: true })
-  companyId: Types.ObjectId
+  @Prop({ required: true })
+  companyId: string
 
   @ApiProperty({
     description: 'ID del proveedor asignado al proyecto',

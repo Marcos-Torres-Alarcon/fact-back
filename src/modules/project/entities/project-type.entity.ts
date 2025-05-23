@@ -37,6 +37,13 @@ export class ProjectType {
   })
   @Prop({ default: true })
   isActive: boolean
+
+  @ApiProperty({
+    description: 'ID de la compañía',
+    example: '664f0e2b2f4b2c0012a12345',
+  })
+  @Prop({ required: true })
+  companyId: string
 }
 
 export const ProjectTypeSchema = SchemaFactory.createForClass(ProjectType)
