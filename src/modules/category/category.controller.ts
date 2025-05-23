@@ -42,7 +42,7 @@ export class CategoryController {
   }
 
   @Get()
-  // @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR )
+  // @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
   @ApiOperation({ summary: 'Obtener todas las categorías' })
   @ApiResponse({
     status: 200,

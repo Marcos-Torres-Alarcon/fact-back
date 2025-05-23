@@ -10,6 +10,7 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Req,
 } from '@nestjs/common'
 import {
   ApiTags,
@@ -35,18 +36,24 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.COMPANY)
+  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Crear un nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
   @ApiResponse({ status: 500, description: 'Error interno del servidor' })
-  async create(@Body() createUserDto: CreateUserDto) {
+  async create(@Body() createUserDto: CreateUserDto, @Req() req: any) {
     try {
       this.logger.log(
         `Recibida solicitud para crear usuario: ${JSON.stringify(createUserDto)}`
       )
+      this.logger.log(
+        `Usuario autenticado: ${JSON.stringify({
+          id: req.user._id,
+          email: req.user.email,
+          role: req.user.role,
+        })}`
+      )
 
-      // Validar que el companyId esté presente si el rol es COMPANY
       if (createUserDto.role === UserRole.COMPANY && !createUserDto.companyId) {
         throw new HttpException(
           'El companyId es requerido para usuarios de tipo COMPANY',
@@ -73,16 +80,51 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.PROVIDER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.COMPANY,
+    UserRole.PROVIDER,
+    UserRole.ADMIN2,
+    UserRole.COLABORADOR
+  )
   @ApiOperation({ summary: 'Obtener todos los usuarios' })
   @ApiResponse({
     status: 200,
     description: 'Lista de usuarios obtenida exitosamente',
   })
   @ApiResponse({ status: 500, description: 'Error interno del servidor' })
-  async findAll() {
+  async findAll(@Req() req: any) {
     try {
       this.logger.log('Recibida solicitud para obtener todos los usuarios')
+      this.logger.log(
+        `Usuario autenticado: ${JSON.stringify({
+          id: req.user._id,
+          email: req.user.email,
+          role: req.user.role,
+        })}`
+      )
+      this.logger.log(
+        `Roles permitidos: ADMIN, COMPANY, PROVIDER, ADMIN2, COLABORADOR`
+      )
+
+      if (
+        ![
+          UserRole.ADMIN,
+          UserRole.COMPANY,
+          UserRole.PROVIDER,
+          UserRole.ADMIN2,
+          UserRole.COLABORADOR,
+        ].includes(req.user.role)
+      ) {
+        this.logger.error(`Rol no permitido: ${req.user.role}`)
+        throw new HttpException(
+          'No tienes permiso para realizar esta acción',
+          HttpStatus.FORBIDDEN
+        )
+      }
+
+      this.logger.log(`Headers de la solicitud: ${JSON.stringify(req.headers)}`)
+
       const users = await this.usersService.findAll()
       this.logger.log(`Se encontraron ${users.length} usuarios`)
       return users
@@ -99,14 +141,22 @@ export class UsersController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY, UserRole.PROVIDER)
   @ApiOperation({ summary: 'Obtener un usuario por ID' })
   @ApiResponse({ status: 200, description: 'Usuario encontrado exitosamente' })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiResponse({ status: 500, description: 'Error interno del servidor' })
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: any) {
     try {
       this.logger.log(`Recibida solicitud para obtener usuario: ${id}`)
+      this.logger.log(
+        `Usuario autenticado: ${JSON.stringify({
+          id: req.user._id,
+          email: req.user.email,
+          role: req.user.role,
+        })}`
+      )
+
       const user = await this.usersService.findOne(id)
       this.logger.log(`Usuario encontrado: ${id}`)
       return user
@@ -123,14 +173,26 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
   @ApiOperation({ summary: 'Actualizar un usuario' })
   @ApiResponse({ status: 200, description: 'Usuario actualizado exitosamente' })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiResponse({ status: 500, description: 'Error interno del servidor' })
-  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @Req() req: any
+  ) {
     try {
       this.logger.log(`Recibida solicitud para actualizar usuario: ${id}`)
+      this.logger.log(
+        `Usuario autenticado: ${JSON.stringify({
+          id: req.user._id,
+          email: req.user.email,
+          role: req.user.role,
+        })}`
+      )
+
       const user = await this.usersService.update(id, updateUserDto)
       this.logger.log(`Usuario actualizado exitosamente: ${id}`)
       return user
@@ -147,14 +209,22 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
   @ApiOperation({ summary: 'Eliminar un usuario' })
   @ApiResponse({ status: 204, description: 'Usuario eliminado exitosamente' })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiResponse({ status: 500, description: 'Error interno del servidor' })
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Req() req: any) {
     try {
       this.logger.log(`Recibida solicitud para eliminar usuario: ${id}`)
+      this.logger.log(
+        `Usuario autenticado: ${JSON.stringify({
+          id: req.user._id,
+          email: req.user.email,
+          role: req.user.role,
+        })}`
+      )
+
       await this.usersService.remove(id)
       this.logger.log(`Usuario eliminado exitosamente: ${id}`)
     } catch (error) {
