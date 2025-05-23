@@ -63,4 +63,12 @@ export class CreateExpenseDto {
   @IsString()
   @IsOptional()
   userId?: string
+
+  @ApiProperty({
+    description: 'ID de la empresa asociada',
+    example: '1',
+  })
+  @IsString()
+  @IsNotEmpty()
+  companyId: string
 }
