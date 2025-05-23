@@ -17,6 +17,7 @@ export interface ExpenseDocument extends Document {
   approvedBy?: string
   rejectedBy?: string
   rejectionReason?: string
+  companyId: string
 }
 
 export interface GetExpenseDocument extends ExpenseDocument {
@@ -119,6 +120,13 @@ export class Expense {
   })
   @Prop()
   createdBy: string
+
+  @ApiProperty({
+    description: 'ID de la compañía',
+    required: true,
+  })
+  @Prop({ type: 'ObjectId', ref: 'Company', required: true })
+  companyId: string
 }
 
 export const ExpenseSchema = SchemaFactory.createForClass(Expense)

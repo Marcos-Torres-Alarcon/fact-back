@@ -17,6 +17,7 @@ export interface InvoiceDocument extends Document {
   pdfFile?: string
   clientId: Types.ObjectId
   projectId: Types.ObjectId
+  companyId: string
 }
 
 export interface GetInvoiceDocument extends InvoiceDocument {
@@ -74,6 +75,9 @@ export class Invoice extends Document {
 
   @Prop({ type: Types.ObjectId, ref: 'Project', required: false })
   projectId?: Types.ObjectId
+
+  @Prop({ type: 'ObjectId', ref: 'Company', required: true })
+  companyId: string
 }
 
 export const InvoiceSchema = SchemaFactory.createForClass(Invoice)

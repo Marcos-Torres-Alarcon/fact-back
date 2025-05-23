@@ -11,6 +11,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { UsersModule } from '../users/users.module'
 import { Provider, ProviderSchema } from '../providers/entities/provider.entity'
 import { ProvidersModule } from '../providers/providers.module'
+import { User, UserSchema } from '../users/entities/user.entity'
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ProvidersModule } from '../providers/providers.module'
     }),
     MongooseModule.forFeature([
       { name: Provider.name, schema: ProviderSchema },
+      { name: User.name, schema: UserSchema },
     ]),
     UsersModule,
     ProvidersModule,

@@ -42,6 +42,7 @@ export class ProjectTypeController {
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
   @ApiOperation({ summary: 'Obtener todos los tipos de proyectos' })
   @ApiResponse({
     status: 200,

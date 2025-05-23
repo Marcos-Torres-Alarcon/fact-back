@@ -18,7 +18,6 @@ export class CategoryService {
     createCategoryDto: CreateCategoryDto
   ): Promise<CategoryDocument> {
     try {
-      // Si no se proporciona una clave, generarla a partir del nombre
       if (!createCategoryDto.key && createCategoryDto.name) {
         createCategoryDto.key = this.generateKey(createCategoryDto.name)
       }
@@ -83,7 +82,6 @@ export class CategoryService {
     updateCategoryDto: UpdateCategoryDto
   ): Promise<CategoryDocument> {
     try {
-      // Si se actualiza el nombre y no se proporciona una clave, regenerar la clave
       if (
         updateCategoryDto.name &&
         !updateCategoryDto.key &&
@@ -125,12 +123,11 @@ export class CategoryService {
     }
   }
 
-  // Método auxiliar para generar una clave a partir del nombre
   private generateKey(name: string): string {
     return name
       .toLowerCase()
-      .normalize('NFD') // Normalizar caracteres acentuados
-      .replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
-      .replace(/[^a-z0-9]/g, '') // Eliminar caracteres especiales
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '')
   }
 }

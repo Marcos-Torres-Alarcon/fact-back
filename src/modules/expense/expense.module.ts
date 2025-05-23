@@ -7,7 +7,6 @@ import { MongooseModule } from '@nestjs/mongoose'
 import { EmailModule } from '../email/email.module'
 import { CategoryModule } from '../category/category.module'
 import { ProjectModule } from '../project/project.module'
-import { RoleModule } from '../role/role.module'
 import { UsersModule } from '../users/users.module'
 
 @Module({
@@ -16,7 +15,6 @@ import { UsersModule } from '../users/users.module'
     EmailModule,
     CategoryModule,
     ProjectModule,
-    RoleModule,
     UsersModule,
   ],
   controllers: [ExpenseController],

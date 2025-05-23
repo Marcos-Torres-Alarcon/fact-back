@@ -64,7 +64,10 @@ export class ExpenseService {
     }
   }
 
-  async analyzeImageWithUrl(body: CreateExpenseDto): Promise<Expense> {
+  async analyzeImageWithUrl(
+    body: CreateExpenseDto,
+    companyId: string
+  ): Promise<Expense> {
     console.log(body)
     const prompt = PROMPT1
     try {
@@ -107,7 +110,7 @@ export class ExpenseService {
       })
 
       try {
-        const admins = (await this.usersService.findAll()).filter(
+        const admins = (await this.usersService.findAll(companyId)).filter(
           u => u.role === UserRole.ADMIN2 && u.isActive
         )
 
@@ -117,7 +120,10 @@ export class ExpenseService {
 
           if (creatorId) {
             try {
-              const creator = await this.usersService.findOne(creatorId)
+              const creator = await this.usersService.findOne(
+                creatorId,
+                companyId
+              )
               if (creator) {
                 creatorName =
                   creator.firstName && creator.lastName
@@ -161,7 +167,10 @@ export class ExpenseService {
 
           if (body.userId) {
             try {
-              const creator = await this.usersService.findOne(body.userId)
+              const creator = await this.usersService.findOne(
+                body.userId,
+                companyId
+              )
               if (creator && creator.email) {
                 const creatorFullName =
                   creator.firstName && creator.lastName
@@ -200,7 +209,7 @@ export class ExpenseService {
         }
 
         try {
-          const colaboradores = await this.usersService.findAll()
+          const colaboradores = await this.usersService.findAll(companyId)
 
           if (colaboradores && colaboradores.length > 0) {
             this.logger.debug(
@@ -212,7 +221,10 @@ export class ExpenseService {
 
             if (creatorId) {
               try {
-                const creator = await this.usersService.findOne(creatorId)
+                const creator = await this.usersService.findOne(
+                  creatorId,
+                  companyId
+                )
                 if (creator) {
                   creatorName =
                     creator.firstName && creator.lastName
@@ -286,28 +298,42 @@ export class ExpenseService {
     }
   }
 
-  async create(createExpenseDto: CreateExpenseDto) {
+  async create(
+    createExpenseDto: CreateExpenseDto,
+    companyId: string
+  ): Promise<Expense> {
     await this.validateCategoryAndProject(
       createExpenseDto.proyect,
       createExpenseDto.category
     )
     return this.expenseRepository.create({
       ...createExpenseDto,
+      companyId,
       status: 'pending',
     })
   }
 
-  findAll() {
-    return this.expenseRepository.find().exec()
+  async findAll(companyId: string): Promise<Expense[]> {
+    return this.expenseRepository
+      .find({ companyId })
+      .populate('companyId')
+      .exec()
   }
 
-  findOne(id: string) {
-    return this.expenseRepository.findById(id).exec()
+  async findOne(id: string, companyId: string): Promise<Expense> {
+    return this.expenseRepository
+      .findOne({ _id: id, companyId })
+      .populate('companyId')
+      .exec()
   }
 
-  async update(id: string, updateExpenseDto: UpdateExpenseDto) {
+  async update(
+    id: string,
+    updateExpenseDto: UpdateExpenseDto,
+    companyId: string
+  ): Promise<Expense> {
     if (updateExpenseDto.category || updateExpenseDto.proyect) {
-      const expense = await this.findOne(id)
+      const expense = await this.findOne(id, companyId)
       if (!expense) {
         throw new NotFoundException(`Gasto con ID ${id} no encontrado`)
       }
@@ -318,12 +344,17 @@ export class ExpenseService {
     }
 
     return this.expenseRepository
-      .findByIdAndUpdate(id, updateExpenseDto, { new: true })
+      .findOneAndUpdate({ _id: id, companyId }, updateExpenseDto, { new: true })
+      .populate('companyId')
       .exec()
   }
 
-  async approveInvoice(id: string, approvalDto: ApprovalDto) {
-    const expense = await this.findOne(id)
+  async approveInvoice(
+    id: string,
+    approvalDto: ApprovalDto,
+    companyId: string
+  ) {
+    const expense = await this.findOne(id, companyId)
     if (!expense) {
       throw new NotFoundException(`Factura con ID ${id} no encontrada`)
     }
@@ -390,7 +421,10 @@ export class ExpenseService {
         )
       } else if (validUserId) {
         try {
-          const approver = await this.usersService.findOne(validUserId)
+          const approver = await this.usersService.findOne(
+            validUserId,
+            companyId
+          )
           if (approver) {
             approverName =
               approver.firstName && approver.lastName
@@ -419,7 +453,10 @@ export class ExpenseService {
             return updatedExpense
           }
 
-          const creator = await this.usersService.findOne(expense.createdBy)
+          const creator = await this.usersService.findOne(
+            expense.createdBy,
+            companyId
+          )
 
           if (creator && creator.email) {
             const creatorFullName =
@@ -486,7 +523,7 @@ export class ExpenseService {
       }
 
       try {
-        const colaboradores = await this.usersService.findAll()
+        const colaboradores = await this.usersService.findAll(companyId)
 
         if (colaboradores && colaboradores.length > 0) {
           this.logger.debug(
@@ -544,8 +581,8 @@ export class ExpenseService {
     return updatedExpense
   }
 
-  async rejectInvoice(id: string, approvalDto: ApprovalDto) {
-    const expense = await this.findOne(id)
+  async rejectInvoice(id: string, approvalDto: ApprovalDto, companyId: string) {
+    const expense = await this.findOne(id, companyId)
     if (!expense) {
       throw new NotFoundException(`Factura con ID ${id} no encontrada`)
     }
@@ -620,7 +657,10 @@ export class ExpenseService {
         )
       } else if (validUserId) {
         try {
-          const rejector = await this.usersService.findOne(validUserId)
+          const rejector = await this.usersService.findOne(
+            validUserId,
+            companyId
+          )
           if (rejector) {
             rejectorName =
               rejector.firstName && rejector.lastName
@@ -651,7 +691,10 @@ export class ExpenseService {
             return updatedExpense
           }
 
-          const creator = await this.usersService.findOne(expense.createdBy)
+          const creator = await this.usersService.findOne(
+            expense.createdBy,
+            companyId
+          )
 
           if (creator && creator.email) {
             const creatorFullName =
@@ -720,7 +763,7 @@ export class ExpenseService {
       }
 
       try {
-        const colaboradores = await this.usersService.findAll()
+        const colaboradores = await this.usersService.findAll(companyId)
 
         if (colaboradores && colaboradores.length > 0) {
           this.logger.debug(
@@ -779,7 +822,7 @@ export class ExpenseService {
     return updatedExpense
   }
 
-  remove(id: string) {
-    return this.expenseRepository.findByIdAndDelete(id).exec()
+  async remove(id: string, companyId: string): Promise<void> {
+    await this.expenseRepository.findOneAndDelete({ _id: id, companyId }).exec()
   }
 }

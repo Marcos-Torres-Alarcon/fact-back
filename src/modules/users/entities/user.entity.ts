@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
-import { UserRole } from '../enums/user-role.enum'
+import { UserRole } from '../../../shared/enums/role.enum'
 import { ApiProperty } from '@nestjs/swagger'
 
 export type UserDocument = User &
@@ -45,9 +45,9 @@ export class User {
   @Prop({ type: String, enum: UserRole, required: true })
   role: UserRole
 
-  @ApiProperty({ description: 'ID de la compañía (opcional)' })
-  @Prop({ required: false })
-  companyId?: string
+  @ApiProperty({ description: 'ID de la compañía' })
+  @Prop({ type: String, required: true })
+  companyId: string
 
   @ApiProperty({ description: 'Estado del usuario' })
   @Prop({ default: true })
