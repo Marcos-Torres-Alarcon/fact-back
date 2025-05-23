@@ -178,7 +178,7 @@ export class ExpenseService {
         }
 
         try {
-          const colaboradores = await this.usersService.findAll(companyId)
+          const colaboradores = await this.usersService.findAll(body.companyId)
 
           if (colaboradores && colaboradores.length > 0) {
             this.logger.debug(
@@ -192,7 +192,7 @@ export class ExpenseService {
               try {
                 const creator = await this.usersService.findOne(
                   creatorId,
-                  companyId
+                  body.companyId
                 )
                 if (creator) {
                   creatorName =
@@ -266,18 +266,11 @@ export class ExpenseService {
     }
   }
 
-<<<<<<< HEAD
-  async create(createExpenseDto: CreateExpenseDto) {
-=======
   async create(
     createExpenseDto: CreateExpenseDto,
     companyId: string
   ): Promise<Expense> {
-    await this.validateCategoryAndProject(
-      createExpenseDto.proyect,
-      createExpenseDto.category
-    )
->>>>>>> e130a107bacb7b397a885789f636c28a5e100ce3
+
     return this.expenseRepository.create({
       ...createExpenseDto,
       companyId,
@@ -285,16 +278,11 @@ export class ExpenseService {
     })
   }
 
-<<<<<<< HEAD
-  findAll() {
-    return this.expenseRepository.find().populate('proyectId').exec()
-=======
   async findAll(companyId: string): Promise<Expense[]> {
     return this.expenseRepository
       .find({ companyId })
       .populate('companyId')
       .exec()
->>>>>>> e130a107bacb7b397a885789f636c28a5e100ce3
   }
 
   async findOne(id: string, companyId: string): Promise<Expense> {
@@ -304,26 +292,19 @@ export class ExpenseService {
       .exec()
   }
 
-<<<<<<< HEAD
-  async update(id: string, updateExpenseDto: UpdateExpenseDto) {
-=======
   async update(
     id: string,
     updateExpenseDto: UpdateExpenseDto,
     companyId: string
   ): Promise<Expense> {
-    if (updateExpenseDto.category || updateExpenseDto.proyect) {
+    if (updateExpenseDto.category) {
       const expense = await this.findOne(id, companyId)
       if (!expense) {
         throw new NotFoundException(`Gasto con ID ${id} no encontrado`)
       }
-      await this.validateCategoryAndProject(
-        updateExpenseDto.proyect || expense.proyect,
-        updateExpenseDto.category || expense.category
-      )
+
     }
 
->>>>>>> e130a107bacb7b397a885789f636c28a5e100ce3
     return this.expenseRepository
       .findOneAndUpdate({ _id: id, companyId }, updateExpenseDto, { new: true })
       .populate('companyId')

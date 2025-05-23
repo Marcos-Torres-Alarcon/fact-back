@@ -15,7 +15,7 @@ export class ProjectTypeService {
   constructor(
     @InjectModel(ProjectType.name)
     private projectTypeModel: Model<ProjectTypeDocument>
-  ) {}
+  ) { }
 
   async create(
     createProjectTypeDto: CreateProjectTypeDto
@@ -32,9 +32,9 @@ export class ProjectTypeService {
     }
   }
 
-  async findAll(): Promise<ProjectTypeDocument[]> {
+  async findAll(companyId: string): Promise<ProjectTypeDocument[]> {
     try {
-      return await this.projectTypeModel.find().exec()
+      return await this.projectTypeModel.find({ companyId }).exec()
     } catch (error) {
       this.logger.error(
         `Error al obtener tipos de proyectos: ${error.message}`,
@@ -44,9 +44,9 @@ export class ProjectTypeService {
     }
   }
 
-  async findOne(id: string): Promise<ProjectTypeDocument> {
+  async findOne(id: string, companyId: string): Promise<ProjectTypeDocument> {
     try {
-      const projectType = await this.projectTypeModel.findById(id).exec()
+      const projectType = await this.projectTypeModel.findOne({ _id: id, companyId }).exec()
       if (!projectType) {
         throw new NotFoundException(
           `Tipo de proyecto con ID ${id} no encontrado`
@@ -64,11 +64,12 @@ export class ProjectTypeService {
 
   async update(
     id: string,
-    updateProjectTypeDto: UpdateProjectTypeDto
+    updateProjectTypeDto: UpdateProjectTypeDto,
+    companyId: string
   ): Promise<ProjectTypeDocument> {
     try {
       const existingProjectType = await this.projectTypeModel
-        .findById(id)
+        .findOne({ _id: id, companyId })
         .exec()
       if (!existingProjectType) {
         throw new NotFoundException(
@@ -77,7 +78,7 @@ export class ProjectTypeService {
       }
 
       const updatedProjectType = await this.projectTypeModel
-        .findByIdAndUpdate(id, updateProjectTypeDto, { new: true })
+        .findOneAndUpdate({ _id: id, companyId }, updateProjectTypeDto, { new: true })
         .exec()
 
       return updatedProjectType
@@ -90,9 +91,9 @@ export class ProjectTypeService {
     }
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, companyId: string): Promise<void> {
     try {
-      const result = await this.projectTypeModel.findByIdAndDelete(id).exec()
+      const result = await this.projectTypeModel.findOneAndDelete({ _id: id, companyId }).exec()
       if (!result) {
         throw new NotFoundException(
           `Tipo de proyecto con ID ${id} no encontrado`

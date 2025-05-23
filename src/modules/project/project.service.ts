@@ -12,10 +12,6 @@ import {
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
 import { Project, ProjectDocument } from './entities/project.entity'
-<<<<<<< HEAD
-=======
-import { UserRole } from '../../shared/enums/role.enum'
->>>>>>> e130a107bacb7b397a885789f636c28a5e100ce3
 import { IUser } from '../auth/interfaces/user.interface'
 
 @Injectable()

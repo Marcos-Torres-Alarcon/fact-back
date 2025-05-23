@@ -24,13 +24,14 @@ import { UserRole } from '../auth/enums/user-role.enum'
 
 @ApiTags('project-types')
 @Controller('project-types')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ProjectTypeController {
-  constructor(private readonly projectTypeService: ProjectTypeService) {}
+  constructor(private readonly projectTypeService: ProjectTypeService) { }
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Crear un nuevo tipo de proyecto' })
   @ApiResponse({
     status: 201,
@@ -41,29 +42,29 @@ export class ProjectTypeController {
     return this.projectTypeService.create(createProjectTypeDto)
   }
 
-  @Get()
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
+  @Get(':companyId')
   @ApiOperation({ summary: 'Obtener todos los tipos de proyectos' })
   @ApiResponse({
     status: 200,
     description: 'Lista de tipos de proyectos obtenida exitosamente',
   })
-  findAll() {
-    return this.projectTypeService.findAll()
+  findAll(@Param('companyId') companyId: string) {
+    return this.projectTypeService.findAll(companyId)
   }
 
-  @Get(':id')
+  @Get(':id/:companyId')
   @ApiOperation({ summary: 'Obtener un tipo de proyecto por ID' })
   @ApiResponse({
     status: 200,
     description: 'Tipo de proyecto encontrado exitosamente',
   })
   @ApiResponse({ status: 404, description: 'Tipo de proyecto no encontrado' })
-  findOne(@Param('id') id: string) {
-    return this.projectTypeService.findOne(id)
+  findOne(@Param('id') id: string, @Param('companyId') companyId: string) {
+    return this.projectTypeService.findOne(id, companyId)
   }
 
-  @Patch(':id')
+  @Patch(':id/:companyId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Actualizar un tipo de proyecto' })
   @ApiResponse({
@@ -73,12 +74,14 @@ export class ProjectTypeController {
   @ApiResponse({ status: 404, description: 'Tipo de proyecto no encontrado' })
   update(
     @Param('id') id: string,
+    @Param('companyId') companyId: string,
     @Body() updateProjectTypeDto: UpdateProjectTypeDto
   ) {
-    return this.projectTypeService.update(id, updateProjectTypeDto)
+    return this.projectTypeService.update(id, updateProjectTypeDto, companyId)
   }
 
-  @Delete(':id')
+  @Delete(':id/:companyId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Eliminar un tipo de proyecto' })
   @ApiResponse({
@@ -86,7 +89,7 @@ export class ProjectTypeController {
     description: 'Tipo de proyecto eliminado exitosamente',
   })
   @ApiResponse({ status: 404, description: 'Tipo de proyecto no encontrado' })
-  remove(@Param('id') id: string) {
-    return this.projectTypeService.remove(id)
+  remove(@Param('id') id: string, @Param('companyId') companyId: string) {
+    return this.projectTypeService.remove(id, companyId)
   }
 }

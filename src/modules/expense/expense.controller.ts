@@ -23,12 +23,11 @@ import { UserRole } from '../auth/enums/user-role.enum'
 export class ExpenseController {
   private readonly logger = new Logger(ExpenseController.name)
 
-  constructor(private readonly expenseService: ExpenseService) {}
+  constructor(private readonly expenseService: ExpenseService) { }
 
   @Post('analyze-image')
   analyzeImage(@Body() body: CreateExpenseDto, @Request() req) {
-    const companyId = req.user.companyId
-    return this.expenseService.analyzeImageWithUrl(body, companyId)
+    return this.expenseService.analyzeImageWithUrl(body)
   }
 
   @Post()
