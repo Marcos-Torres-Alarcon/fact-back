@@ -15,9 +15,9 @@ import { EmailService } from '../email/email.service'
 import { PROMPT1 } from './constants/prompt1'
 import OpenAI from 'openai'
 import { ApprovalDto } from './dto/approval.dto'
-import { UserService } from '../user/user.service'
 import { UserRole } from '../auth/enums/user-role.enum'
 import { ProjectService } from '../project/project.service'
+import { UsersService } from '../users/services/users.service'
 @Injectable()
 export class ExpenseService {
   private readonly logger = new Logger(ExpenseService.name)
@@ -29,8 +29,8 @@ export class ExpenseService {
     @InjectModel(Expense.name)
     private expenseRepository: Model<Expense>,
     private readonly emailService: EmailService,
-    private readonly userService: UserService,
-    private readonly projectService: ProjectService
+    private readonly projectService: ProjectService,
+    private readonly usersService: UsersService
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY')
     if (!apiKey) {
@@ -40,7 +40,6 @@ export class ExpenseService {
   }
 
   async analyzeImageWithUrl(body: CreateExpenseDto): Promise<Expense> {
-    console.log(body)
     const prompt = PROMPT1
     try {
 
@@ -82,9 +81,8 @@ export class ExpenseService {
       const project = await this.projectService.findOne2(body.proyectId)
 
       try {
-        const admins = await this.userService.findByRoleAndStatus(
-          UserRole.ADMIN2,
-          true
+        const admins = (await this.usersService.findAll(body.companyId)).filter(
+          u => u.role === UserRole.ADMIN2 && u.isActive
         )
 
         if (admins && admins.length > 0) {
@@ -93,9 +91,10 @@ export class ExpenseService {
 
           if (creatorId) {
             try {
-              const creator = await this.userService.findOne(creatorId, {
-                role: UserRole.ADMIN,
-              })
+              const creator = await this.usersService.findOne(
+                creatorId,
+                body.companyId
+              )
               if (creator) {
                 creatorName =
                   creator.firstName && creator.lastName
@@ -138,9 +137,10 @@ export class ExpenseService {
 
           if (body.userId) {
             try {
-              const creator = await this.userService.findOne(body.userId, {
-                role: UserRole.ADMIN,
-              })
+              const creator = await this.usersService.findOne(
+                body.userId,
+                body.companyId
+              )
               if (creator && creator.email) {
                 const creatorFullName =
                   creator.firstName && creator.lastName
@@ -178,10 +178,7 @@ export class ExpenseService {
         }
 
         try {
-          const colaboradores = await this.userService.findByRoleAndStatus(
-            UserRole.COLABORADOR,
-            true
-          )
+          const colaboradores = await this.usersService.findAll(companyId)
 
           if (colaboradores && colaboradores.length > 0) {
             this.logger.debug(
@@ -193,9 +190,10 @@ export class ExpenseService {
 
             if (creatorId) {
               try {
-                const creator = await this.userService.findOne(creatorId, {
-                  role: UserRole.ADMIN,
-                })
+                const creator = await this.usersService.findOne(
+                  creatorId,
+                  companyId
+                )
                 if (creator) {
                   creatorName =
                     creator.firstName && creator.lastName
@@ -268,29 +266,76 @@ export class ExpenseService {
     }
   }
 
+<<<<<<< HEAD
   async create(createExpenseDto: CreateExpenseDto) {
+=======
+  async create(
+    createExpenseDto: CreateExpenseDto,
+    companyId: string
+  ): Promise<Expense> {
+    await this.validateCategoryAndProject(
+      createExpenseDto.proyect,
+      createExpenseDto.category
+    )
+>>>>>>> e130a107bacb7b397a885789f636c28a5e100ce3
     return this.expenseRepository.create({
       ...createExpenseDto,
+      companyId,
       status: 'pending',
     })
   }
 
+<<<<<<< HEAD
   findAll() {
     return this.expenseRepository.find().populate('proyectId').exec()
-  }
-
-  findOne(id: string) {
-    return this.expenseRepository.findById(id).exec()
-  }
-
-  async update(id: string, updateExpenseDto: UpdateExpenseDto) {
+=======
+  async findAll(companyId: string): Promise<Expense[]> {
     return this.expenseRepository
-      .findByIdAndUpdate(id, updateExpenseDto, { new: true })
+      .find({ companyId })
+      .populate('companyId')
+      .exec()
+>>>>>>> e130a107bacb7b397a885789f636c28a5e100ce3
+  }
+
+  async findOne(id: string, companyId: string): Promise<Expense> {
+    return this.expenseRepository
+      .findOne({ _id: id, companyId })
+      .populate('companyId')
       .exec()
   }
 
-  async approveInvoice(id: string, approvalDto: ApprovalDto) {
-    const expense = await this.findOne(id)
+<<<<<<< HEAD
+  async update(id: string, updateExpenseDto: UpdateExpenseDto) {
+=======
+  async update(
+    id: string,
+    updateExpenseDto: UpdateExpenseDto,
+    companyId: string
+  ): Promise<Expense> {
+    if (updateExpenseDto.category || updateExpenseDto.proyect) {
+      const expense = await this.findOne(id, companyId)
+      if (!expense) {
+        throw new NotFoundException(`Gasto con ID ${id} no encontrado`)
+      }
+      await this.validateCategoryAndProject(
+        updateExpenseDto.proyect || expense.proyect,
+        updateExpenseDto.category || expense.category
+      )
+    }
+
+>>>>>>> e130a107bacb7b397a885789f636c28a5e100ce3
+    return this.expenseRepository
+      .findOneAndUpdate({ _id: id, companyId }, updateExpenseDto, { new: true })
+      .populate('companyId')
+      .exec()
+  }
+
+  async approveInvoice(
+    id: string,
+    approvalDto: ApprovalDto,
+    companyId: string
+  ) {
+    const expense = await this.findOne(id, companyId)
     if (!expense) {
       throw new NotFoundException(`Factura con ID ${id} no encontrada`)
     }
@@ -316,7 +361,7 @@ export class ExpenseService {
         )
 
         try {
-          const userByEmail = await this.userService.findByEmail(
+          const userByEmail = await this.usersService.findByEmail(
             approvalDto.userId
           )
           if (userByEmail) {
@@ -357,9 +402,10 @@ export class ExpenseService {
         )
       } else if (validUserId) {
         try {
-          const approver = await this.userService.findOne(validUserId, {
-            role: UserRole.ADMIN,
-          })
+          const approver = await this.usersService.findOne(
+            validUserId,
+            companyId
+          )
           if (approver) {
             approverName =
               approver.firstName && approver.lastName
@@ -388,9 +434,10 @@ export class ExpenseService {
             return updatedExpense
           }
 
-          const creator = await this.userService.findOne(expense.createdBy, {
-            role: UserRole.ADMIN,
-          })
+          const creator = await this.usersService.findOne(
+            expense.createdBy,
+            companyId
+          )
 
           if (creator && creator.email) {
             const creatorFullName =
@@ -455,10 +502,7 @@ export class ExpenseService {
       }
 
       try {
-        const colaboradores = await this.userService.findByRoleAndStatus(
-          UserRole.COLABORADOR,
-          true
-        )
+        const colaboradores = await this.usersService.findAll(companyId)
 
         if (colaboradores && colaboradores.length > 0) {
           this.logger.debug(
@@ -515,8 +559,8 @@ export class ExpenseService {
     return updatedExpense
   }
 
-  async rejectInvoice(id: string, approvalDto: ApprovalDto) {
-    const expense = await this.findOne(id)
+  async rejectInvoice(id: string, approvalDto: ApprovalDto, companyId: string) {
+    const expense = await this.findOne(id, companyId)
     if (!expense) {
       throw new NotFoundException(`Factura con ID ${id} no encontrada`)
     }
@@ -549,7 +593,7 @@ export class ExpenseService {
         )
 
         try {
-          const userByEmail = await this.userService.findByEmail(
+          const userByEmail = await this.usersService.findByEmail(
             approvalDto.userId
           )
           if (userByEmail) {
@@ -591,9 +635,10 @@ export class ExpenseService {
         )
       } else if (validUserId) {
         try {
-          const rejector = await this.userService.findOne(validUserId, {
-            role: UserRole.ADMIN,
-          })
+          const rejector = await this.usersService.findOne(
+            validUserId,
+            companyId
+          )
           if (rejector) {
             rejectorName =
               rejector.firstName && rejector.lastName
@@ -624,9 +669,10 @@ export class ExpenseService {
             return updatedExpense
           }
 
-          const creator = await this.userService.findOne(expense.createdBy, {
-            role: UserRole.ADMIN,
-          })
+          const creator = await this.usersService.findOne(
+            expense.createdBy,
+            companyId
+          )
 
           if (creator && creator.email) {
             const creatorFullName =
@@ -693,10 +739,7 @@ export class ExpenseService {
       }
 
       try {
-        const colaboradores = await this.userService.findByRoleAndStatus(
-          UserRole.COLABORADOR,
-          true
-        )
+        const colaboradores = await this.usersService.findAll(companyId)
 
         if (colaboradores && colaboradores.length > 0) {
           this.logger.debug(
@@ -754,7 +797,7 @@ export class ExpenseService {
     return updatedExpense
   }
 
-  remove(id: string) {
-    return this.expenseRepository.findByIdAndDelete(id).exec()
+  async remove(id: string, companyId: string): Promise<void> {
+    await this.expenseRepository.findOneAndDelete({ _id: id, companyId }).exec()
   }
 }

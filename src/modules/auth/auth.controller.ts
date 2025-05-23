@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   UseGuards,
-  Request,
   HttpCode,
   HttpStatus,
   Get,
@@ -20,10 +19,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger'
-import { User, UserDocument, UserResponse } from '../users/entities/user.entity'
-import { RolesGuard } from './guards/roles.guard'
-import { Roles } from './decorators/roles.decorator'
-import { UserRole } from '../users/enums/user-role.enum'
+import { UserDocument, UserResponse } from '../users/entities/user.entity'
 import { GetUser } from './decorators/get-user.decorator'
 import { Request as ExpressRequest } from 'express'
 
@@ -99,10 +95,6 @@ export class AuthController {
     status: HttpStatus.FOUND,
     description: 'Redirección a Google',
   })
-  async googleAuth(@Req() req) {
-    // Este método no se ejecuta, la guard redirige a Google
-  }
-
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Callback de autenticación con Google' })

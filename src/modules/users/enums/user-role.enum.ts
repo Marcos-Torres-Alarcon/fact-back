@@ -1,15 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  ADMIN2 = 'ADMIN2',
-  COMPANY = 'COMPANY',
-  PROVIDER = 'PROVIDER',
-  ACCOUNTING = 'ACCOUNTING',
-  TREASURY = 'TREASURY',
-  USER = 'USER',
-  COLABORADOR = 'COLABORADOR',
-}
+import { UserRole } from '../../../shared/enums/role.enum'
 
 // Documentación para Swagger
 export const UserRoleDescription = {

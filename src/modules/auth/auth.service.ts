@@ -16,7 +16,7 @@ import {
   ProviderDocument,
 } from '../providers/entities/provider.entity'
 import { LoginDto } from './dto/login.dto'
-import { UserRole } from '../users/enums/user-role.enum'
+import { UserRole } from '../../shared/enums/role.enum'
 import { v4 as uuidv4 } from 'uuid'
 import { Request } from 'express'
 import { Logger } from '@nestjs/common'
@@ -53,7 +53,6 @@ export class AuthService {
   async register(
     registerDto: RegisterDto
   ): Promise<{ access_token: string; user: UserResponse }> {
-    // Verificar si el usuario ya existe
     const existingUser = await this.userModel.findOne({
       email: registerDto.email,
     })
@@ -61,24 +60,24 @@ export class AuthService {
       throw new BadRequestException('El correo electrónico ya está registrado')
     }
 
-    // Si el rol es COMPANY, asignar el ID del usuario como companyId
     if (registerDto.role === UserRole.COMPANY) {
       registerDto.companyId = new Types.ObjectId().toString()
     }
 
-    // Crear el usuario
-    const user = await this.usersService.create({
-      firstName: registerDto.firstName,
-      lastName: registerDto.lastName,
-      email: registerDto.email,
-      password: registerDto.password,
-      role: registerDto.role,
-      companyId: registerDto.companyId,
-      isActive: true,
-      userId: new Types.ObjectId().toString(),
-    })
+    const user = await this.usersService.create(
+      {
+        firstName: registerDto.firstName,
+        lastName: registerDto.lastName,
+        email: registerDto.email,
+        password: registerDto.password,
+        role: registerDto.role,
+        companyId: registerDto.companyId,
+        isActive: true,
+        userId: new Types.ObjectId().toString(),
+      },
+      registerDto.companyId
+    )
 
-    // Generar token
     const token = this.generateToken(user)
 
     const { password, ...userResponse } = user.toObject()
@@ -120,7 +119,6 @@ export class AuthService {
     try {
       this.logger.debug(`Validando usuario: ${email}`)
 
-      // Buscar primero en usuarios
       const user = await this.userModel.findOne({ email }).exec()
       if (user) {
         const isPasswordValid = await bcrypt.compare(password, user.password)
@@ -131,7 +129,6 @@ export class AuthService {
         return user
       }
 
-      // Si no se encuentra en usuarios, buscar en proveedores
       const provider = await this.providerModel.findOne({ email }).exec()
       if (provider) {
         const isPasswordValid = await bcrypt.compare(
@@ -207,21 +204,22 @@ export class AuthService {
 
     const googleUser = req.user as GoogleUser
 
-    // Buscar usuario existente
     let user = await this.userModel.findOne({ email: googleUser.email })
 
     if (!user) {
-      // Crear nuevo usuario si no existe
-      const newUser = await this.usersService.create({
-        _id: uuidv4(),
-        userId: new Types.ObjectId().toString(),
-        firstName: googleUser.firstName,
-        lastName: googleUser.lastName,
-        email: googleUser.email,
-        password: uuidv4(), // Contraseña aleatoria
-        role: UserRole.USER,
-        isActive: true,
-      })
+      const newUser = await this.usersService.create(
+        {
+          _id: uuidv4(),
+          userId: new Types.ObjectId().toString(),
+          firstName: googleUser.firstName,
+          lastName: googleUser.lastName,
+          email: googleUser.email,
+          password: uuidv4(),
+          role: UserRole.USER,
+          isActive: true,
+        },
+        null
+      )
       user = newUser
     } else if (!user.isActive) {
       throw new ForbiddenException('La cuenta está desactivada')

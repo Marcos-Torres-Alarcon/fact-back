@@ -35,7 +35,10 @@ export class CompanyOwnershipGuard implements CanActivate {
       }
 
       try {
-        const provider = await this.providersService.findById(providerId)
+        const provider = await this.providersService.findById(
+          providerId,
+          user.companyId
+        )
 
         if (!provider.companyId) {
           this.logger.warn(`Proveedor sin empresa asignada: ${providerId}`)

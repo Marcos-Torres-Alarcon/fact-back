@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsString, IsEmail, IsEnum, IsOptional, IsMongoId } from 'class-validator'
-import { UserRole } from '../enums/user-role.enum'
+import {
+  IsString,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsMongoId,
+} from 'class-validator'
+import { UserRole } from '../../../shared/enums/role.enum'
 
 export class UpdateUserDto {
   @ApiProperty({ description: 'Nombre del usuario', required: false })
@@ -18,7 +24,11 @@ export class UpdateUserDto {
   @IsOptional()
   password?: string
 
-  @ApiProperty({ description: 'Rol del usuario', enum: UserRole, required: false })
+  @ApiProperty({
+    description: 'Rol del usuario',
+    enum: UserRole,
+    required: false,
+  })
   @IsEnum(UserRole)
   @IsOptional()
   role?: UserRole
@@ -27,4 +37,4 @@ export class UpdateUserDto {
   @IsMongoId()
   @IsOptional()
   companyId?: string
-} 
+}

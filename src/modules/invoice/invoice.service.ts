@@ -17,9 +17,8 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { firstValueFrom } from 'rxjs'
 import { EmailService } from '../email/email.service'
-import { UserService } from '../user/user.service'
+import { UsersService } from '../users/services/users.service'
 import { UserRole } from '../auth/enums/user-role.enum'
-import { ClientService } from '../client/client.service'
 
 interface InvoiceData {
   rucEmisor?: string
@@ -42,8 +41,7 @@ export class InvoiceService {
     private invoiceModel: Model<Invoice>,
     private readonly httpService: HttpService,
     private readonly emailService: EmailService,
-    private readonly userService: UserService,
-    private readonly clientService: ClientService
+    private readonly usersService: UsersService
   ) {
     // Asegurarse de que el directorio temporal existe y tiene permisos
     try {
@@ -65,43 +63,27 @@ export class InvoiceService {
     }
   }
 
-  async create(createInvoiceDto: CreateInvoiceDto): Promise<Invoice> {
+  async create(
+    createInvoiceDto: CreateInvoiceDto,
+    companyId: string
+  ): Promise<Invoice> {
     const createdInvoice = new this.invoiceModel({
       ...createInvoiceDto,
+      companyId,
       status: 'PENDING',
     })
-    const savedInvoice = await createdInvoice.save()
-
-    // Obtener usuarios con roles específicos
-    const users = await this.userService.findAll({ role: UserRole.ADMIN })
-    const usersToNotify = users.filter(
-      u => u.role === UserRole.ACCOUNTING || u.role === UserRole.COMPANY
-    )
-
-    // Enviar notificación a cada usuario
-    for (const user of usersToNotify) {
-      try {
-        await this.sendInvoiceUploadedNotification(
-          user.email,
-          `${savedInvoice.serie}-${savedInvoice.correlativo}`,
-          'Proveedor'
-        )
-      } catch (error) {
-        this.logger.error(
-          `Error al enviar notificación a ${user.email}: ${error.message}`
-        )
-      }
-    }
-
-    return savedInvoice
+    return createdInvoice.save()
   }
 
-  async findAll(): Promise<Invoice[]> {
-    return this.invoiceModel.find().exec()
+  async findAll(companyId: string): Promise<Invoice[]> {
+    return this.invoiceModel.find({ companyId }).populate('companyId').exec()
   }
 
-  async findOne(id: string): Promise<Invoice> {
-    const invoice = await this.invoiceModel.findById(id).exec()
+  async findOne(id: string, companyId: string): Promise<Invoice> {
+    const invoice = await this.invoiceModel
+      .findOne({ _id: id, companyId })
+      .populate('companyId')
+      .exec()
     if (!invoice) {
       throw new NotFoundException(`Factura con ID ${id} no encontrada`)
     }
@@ -146,14 +128,13 @@ export class InvoiceService {
 
   async update(
     id: string,
-    updateInvoiceDto: UpdateInvoiceDto
+    updateInvoiceDto: UpdateInvoiceDto,
+    companyId: string
   ): Promise<Invoice> {
     const updatedInvoice = await this.invoiceModel
-      .findByIdAndUpdate(id, updateInvoiceDto, { new: true })
-      .populate('clientId')
-      .populate('projectId')
+      .findOneAndUpdate({ _id: id, companyId }, updateInvoiceDto, { new: true })
+      .populate('companyId')
       .exec()
-
     if (!updatedInvoice) {
       throw new NotFoundException(`Factura con ID ${id} no encontrada`)
     }
@@ -163,6 +144,7 @@ export class InvoiceService {
   async updateStatus(
     id: string,
     status: InvoiceStatus,
+    companyId: string,
     reason?: string
   ): Promise<Invoice> {
     try {
@@ -197,8 +179,8 @@ export class InvoiceService {
 
       // Obtener usuarios con rol de tesorería activos
       this.logger.debug('[DEBUG] Buscando usuarios de tesorería activos...')
-      const treasuryUsers = await this.userService.findByRoleAndStatus(
-        UserRole.TREASURY
+      const treasuryUsers = (await this.usersService.findAll(companyId)).filter(
+        u => u.role === UserRole.TREASURY && u.isActive
       )
 
       this.logger.debug(
@@ -309,8 +291,10 @@ export class InvoiceService {
     return { buffer, filename }
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.invoiceModel.findByIdAndDelete(id).exec()
+  async remove(id: string, companyId: string): Promise<void> {
+    const result = await this.invoiceModel
+      .findOneAndDelete({ _id: id, companyId })
+      .exec()
     if (!result) {
       throw new NotFoundException(`Factura con ID ${id} no encontrada`)
     }
@@ -482,11 +466,14 @@ export class InvoiceService {
           const validationResult = this.interpretSunatResponse(response.data)
 
           // Crear la factura con el PDF si está disponible
-          const createdInvoice = await this.create({
-            ...extractedData,
-            state: validationResult.status,
-            pdfFile: pdfBase64, // Guardar el PDF en base64
-          })
+          const createdInvoice = await this.create(
+            {
+              ...extractedData,
+              state: validationResult.status,
+              pdfFile: pdfBase64, // Guardar el PDF en base64
+            },
+            extractedData.companyId
+          )
 
           return {
             message: 'Validación completada.',
@@ -704,16 +691,18 @@ export class InvoiceService {
       )
 
       // Crear la factura
-      const invoice = await this.create({
-        ...validationResult,
-        status: 'PENDING',
-      })
+      const invoice = await this.create(
+        {
+          ...validationResult,
+          status: 'PENDING',
+        },
+        validationResult.companyId
+      )
 
       // Obtener usuarios con roles específicos para enviar notificaciones
       try {
-        const admins = await this.userService.findByRoleAndStatus(
-          UserRole.ADMIN2,
-          true
+        const admins = (await this.usersService.findAll(user.companyId)).filter(
+          u => u.role === UserRole.ADMIN2 && u.isActive
         )
 
         // Obtener el nombre completo del usuario para los correos
@@ -874,9 +863,9 @@ export class InvoiceService {
 
       // Obtener usuarios con rol de proveedor
       this.logger.debug('[DEBUG] Buscando usuarios proveedores...')
-      const providers = await this.userService.findByRoleAndStatus(
-        UserRole.PROVIDER
-      )
+      const providers = (
+        await this.usersService.findAll(invoice.companyId)
+      ).filter(u => u.role === UserRole.PROVIDER && u.isActive)
 
       this.logger.debug(`[DEBUG] Proveedores encontrados: ${providers.length}`)
 
@@ -968,9 +957,9 @@ export class InvoiceService {
       )
 
       // Obtener todos los proveedores activos
-      const providers = await this.userService.findByRoleAndStatus(
-        UserRole.PROVIDER
-      )
+      const providers = (
+        await this.usersService.findAll(invoice.companyId)
+      ).filter(u => u.role === UserRole.PROVIDER && u.isActive)
 
       // Enviar notificación a todos los proveedores
       for (const provider of providers) {

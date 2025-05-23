@@ -3,7 +3,7 @@ import { PassportStrategy } from '@nestjs/passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { User } from '../../users/entities/user.entity'
 import { Logger } from '@nestjs/common'
 
@@ -25,10 +25,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: any) {
     try {
       this.logger.log(`Validando token para usuario: ${payload.sub}`)
-      const user = await this.userModel.findOne({ _id: payload.sub })
+      this.logger.debug(`Payload recibido: ${JSON.stringify(payload)}`)
+      this.logger.debug(
+        `Tipo de companyId en payload: ${typeof payload.companyId}, valor: ${payload.companyId}`
+      )
+      const query = {
+        _id: new Types.ObjectId(payload.sub),
+        companyId: String(payload.companyId),
+      }
+      this.logger.debug(
+        `Tipo de _id en query: ${typeof query._id}, valor: ${query._id}`
+      )
+      this.logger.debug(
+        `Tipo de companyId en query: ${typeof query.companyId}, valor: ${query.companyId}`
+      )
+      this.logger.debug(
+        `Query de búsqueda de usuario: ${JSON.stringify(query)}`
+      )
+      const user = await this.userModel.findOne(query)
+      this.logger.debug(`Resultado de findOne: ${JSON.stringify(user)}`)
 
       if (!user) {
-        this.logger.warn(`Usuario no encontrado: ${payload.sub}`)
+        this.logger.warn(
+          `Usuario no encontrado: ${payload.sub} en companyId: ${payload.companyId}`
+        )
         throw new UnauthorizedException('Usuario no encontrado')
       }
 
@@ -37,7 +57,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('Usuario inactivo')
       }
 
-      // Si el usuario es COMPANY y no tiene companyId, asignar su propio ID
       if (user.role === 'COMPANY' && !user.companyId) {
         this.logger.debug(`Asignando companyId al usuario COMPANY: ${user._id}`)
         user.companyId = user._id.toString()

@@ -130,8 +130,9 @@ export class InvoiceController {
     description: 'Cliente o proyecto no encontrado',
   })
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createInvoiceDto: CreateInvoiceDto) {
-    return this.invoiceService.create(createInvoiceDto)
+  create(@Body() createInvoiceDto: CreateInvoiceDto, @Req() req: any) {
+    const companyId = req.user.companyId
+    return this.invoiceService.create(createInvoiceDto, companyId)
   }
 
   @Get()
@@ -149,8 +150,9 @@ export class InvoiceController {
     description: 'Lista de facturas obtenida exitosamente',
     type: [Invoice],
   })
-  findAll() {
-    return this.invoiceService.findAll()
+  findAll(@Req() req: any) {
+    const companyId = req.user.companyId
+    return this.invoiceService.findAll(companyId)
   }
 
   @Get(':id')
@@ -166,8 +168,9 @@ export class InvoiceController {
     status: HttpStatus.NOT_FOUND,
     description: 'Factura no encontrada',
   })
-  findOne(@Param('id') id: string) {
-    return this.invoiceService.findOne(id)
+  findOne(@Param('id') id: string, @Req() req: any) {
+    const companyId = req.user.companyId
+    return this.invoiceService.findOne(id, companyId)
   }
 
   @Get('client/:client')
@@ -221,19 +224,31 @@ export class InvoiceController {
     status: HttpStatus.BAD_REQUEST,
     description: 'Datos de actualización inválidos',
   })
-  update(@Param('id') id: string, @Body() updateInvoiceDto: UpdateInvoiceDto) {
-    return this.invoiceService.update(id, updateInvoiceDto)
+  update(
+    @Param('id') id: string,
+    @Body() updateInvoiceDto: UpdateInvoiceDto,
+    @Req() req: any
+  ) {
+    const companyId = req.user.companyId
+    return this.invoiceService.update(id, updateInvoiceDto, companyId)
   }
 
-  @Put(':id/status')
+  @Patch(':id/status')
   @Roles(UserRole.ACCOUNTING)
   @ApiOperation({ summary: 'Actualizar estado de una factura' })
   @ApiResponse({ status: 200, description: 'Estado actualizado exitosamente' })
   async updateStatus(
     @Param('id') id: string,
-    @Body() body: { status: InvoiceStatus; reason?: string }
+    @Body() body: { status: InvoiceStatus; reason?: string },
+    @Req() req: any
   ) {
-    return this.invoiceService.updateStatus(id, body.status, body.reason)
+    const companyId = req.user.companyId
+    return this.invoiceService.updateStatus(
+      id,
+      body.status,
+      companyId,
+      body.reason
+    )
   }
 
   @Delete(':id')
@@ -249,8 +264,9 @@ export class InvoiceController {
     description: 'Factura no encontrada',
   })
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
-    return this.invoiceService.remove(id)
+  remove(@Param('id') id: string, @Req() req: any) {
+    const companyId = req.user.companyId
+    return this.invoiceService.remove(id, companyId)
   }
 
   @Post(':id/acta-aceptacion')
@@ -319,12 +335,16 @@ export class InvoiceController {
   }
 
   @Get(':id/pdf')
-  async getInvoicePdf(@Param('id') id: string, @Res() res: Response) {
-    const invoice = await this.invoiceService.findOne(id)
+  async getInvoicePdf(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Res() res: Response
+  ) {
+    const companyId = req.user.companyId
+    const invoice = await this.invoiceService.findOne(id, companyId)
     if (!invoice || !invoice.pdfFile) {
       throw new HttpException('Factura no encontrada', HttpStatus.NOT_FOUND)
     }
-
     const buffer = Buffer.from(invoice.pdfFile, 'base64')
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader(

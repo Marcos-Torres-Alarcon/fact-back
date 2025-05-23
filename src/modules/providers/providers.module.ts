@@ -4,14 +4,14 @@ import { Provider, ProviderSchema } from './entities/provider.entity'
 import { ProvidersController } from './providers.controller'
 import { BcryptService } from '../../shared/services/bcrypt.service'
 import { ProvidersService } from './providers.service'
-import { UserModule } from '../user/user.module'
+import { UsersModule } from '../users/users.module'
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Provider.name, schema: ProviderSchema },
     ]),
-    UserModule,
+    UsersModule,
   ],
   controllers: [ProvidersController],
   providers: [ProvidersService, BcryptService],

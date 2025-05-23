@@ -11,7 +11,7 @@ import {
   ValidateIf,
   Matches,
 } from 'class-validator'
-import { UserRole, UserRoleDescription } from '../enums/user-role.enum'
+import { UserRole } from '../../../shared/enums/role.enum'
 
 export class CreateUserDto {
   @ApiProperty({ description: 'ID del usuario (opcional)' })

@@ -12,6 +12,10 @@ import {
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
 import { Project, ProjectDocument } from './entities/project.entity'
+<<<<<<< HEAD
+=======
+import { UserRole } from '../../shared/enums/role.enum'
+>>>>>>> e130a107bacb7b397a885789f636c28a5e100ce3
 import { IUser } from '../auth/interfaces/user.interface'
 
 @Injectable()
@@ -26,6 +30,7 @@ export class ProjectService {
   ): Promise<Project> {
     const project = new this.projectModel({
       ...createProjectDto,
+      companyId: user.companyId,
       createdBy: user._id,
       updatedBy: user._id,
       status: createProjectDto.status || 'PENDIENTE',
@@ -38,6 +43,7 @@ export class ProjectService {
     const query = user.role === 'ADMIN' ? {} : { companyId: user.companyId }
     return this.projectModel
       .find(query)
+      .populate('companyId')
       .populate('providerId', 'firstName lastName')
       .exec()
   }
@@ -48,16 +54,11 @@ export class ProjectService {
 
   async findOne(id: string, user: IUser): Promise<Project> {
     const project = await this.projectModel
-      .findById(id)
+      .findOne({ _id: id, companyId: user.companyId })
+      .populate('companyId')
       .populate('providerId', 'firstName lastName')
       .exec()
     if (!project) {
-      throw new NotFoundException('Proyecto no encontrado')
-    }
-    if (
-      user.role !== 'ADMIN' &&
-      project.companyId.toString() !== user.companyId.toString()
-    ) {
       throw new NotFoundException('Proyecto no encontrado')
     }
     return project
@@ -129,23 +130,19 @@ export class ProjectService {
     updateProjectDto: Partial<CreateProjectDto>,
     user: IUser
   ): Promise<Project> {
-    const project = await this.projectModel.findById(id).exec()
+    const project = await this.projectModel
+      .findOne({ _id: id, companyId: user.companyId })
+      .exec()
     if (!project) {
       throw new NotFoundException('Proyecto no encontrado')
     }
-    if (
-      user.role !== 'ADMIN' &&
-      project.companyId.toString() !== user.companyId.toString()
-    ) {
-      throw new NotFoundException('Proyecto no encontrado')
-    }
-
     return this.projectModel
-      .findByIdAndUpdate(
-        id,
+      .findOneAndUpdate(
+        { _id: id, companyId: user.companyId },
         { ...updateProjectDto, updatedBy: user._id },
         { new: true }
       )
+      .populate('companyId')
       .exec()
   }
 
@@ -244,18 +241,12 @@ export class ProjectService {
   }
 
   async remove(id: string, user: IUser): Promise<void> {
-    const project = await this.projectModel.findById(id).exec()
-    if (!project) {
+    const result = await this.projectModel
+      .findOneAndDelete({ _id: id, companyId: user.companyId })
+      .exec()
+    if (!result) {
       throw new NotFoundException('Proyecto no encontrado')
     }
-    if (
-      user.role !== 'ADMIN' &&
-      project.companyId.toString() !== user.companyId.toString()
-    ) {
-      throw new NotFoundException('Proyecto no encontrado')
-    }
-
-    await this.projectModel.findByIdAndDelete(id).exec()
   }
 
   async complete(id: string): Promise<Project> {

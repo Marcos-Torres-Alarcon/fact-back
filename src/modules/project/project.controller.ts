@@ -23,7 +23,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../auth/guards/roles.guard'
 import { Roles } from '../auth/decorators/roles.decorator'
-import { UserRole } from '../auth/enums/user-role.enum'
+import { UserRole } from '../../shared/enums/role.enum'
 import {
   ApiTags,
   ApiOperation,

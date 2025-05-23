@@ -40,7 +40,7 @@ export class Provider extends Document {
   @Prop({ default: true })
   isActive: boolean
 
-  @Prop({ required: true })
+  @Prop({ type: 'ObjectId', ref: 'Company', required: true })
   companyId: string
 }
 

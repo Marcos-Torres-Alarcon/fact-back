@@ -23,7 +23,7 @@ import { CreateUserDto } from '../dto/create-user.dto'
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../../auth/guards/roles.guard'
 import { Roles } from '../../auth/decorators/roles.decorator'
-import { UserRole } from '../enums/user-role.enum'
+import { UserRole } from '../../../shared/enums/role.enum'
 import { UpdateUserDto } from '../dto/update-user.dto'
 
 @ApiTags('users')
@@ -61,7 +61,8 @@ export class UsersController {
         )
       }
 
-      const user = await this.usersService.create(createUserDto)
+      const companyId = req.user.companyId
+      const user = await this.usersService.create(createUserDto, companyId)
       this.logger.log(`Usuario creado exitosamente: ${user._id}`)
       return user
     } catch (error) {
@@ -125,7 +126,8 @@ export class UsersController {
 
       this.logger.log(`Headers de la solicitud: ${JSON.stringify(req.headers)}`)
 
-      const users = await this.usersService.findAll()
+      const companyId = req.user.companyId
+      const users = await this.usersService.findAll(companyId)
       this.logger.log(`Se encontraron ${users.length} usuarios`)
       return users
     } catch (error) {
@@ -157,7 +159,8 @@ export class UsersController {
         })}`
       )
 
-      const user = await this.usersService.findOne(id)
+      const companyId = req.user.companyId
+      const user = await this.usersService.findOne(id, companyId)
       this.logger.log(`Usuario encontrado: ${id}`)
       return user
     } catch (error) {
@@ -193,7 +196,8 @@ export class UsersController {
         })}`
       )
 
-      const user = await this.usersService.update(id, updateUserDto)
+      const companyId = req.user.companyId
+      const user = await this.usersService.update(id, updateUserDto, companyId)
       this.logger.log(`Usuario actualizado exitosamente: ${id}`)
       return user
     } catch (error) {
@@ -225,7 +229,8 @@ export class UsersController {
         })}`
       )
 
-      await this.usersService.remove(id)
+      const companyId = req.user.companyId
+      await this.usersService.remove(id, companyId)
       this.logger.log(`Usuario eliminado exitosamente: ${id}`)
     } catch (error) {
       this.logger.error(

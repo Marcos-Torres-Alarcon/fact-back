@@ -6,8 +6,7 @@ import { Invoice, InvoiceSchema } from './entities/invoice.entity'
 import { ProjectModule } from '../project/project.module'
 import { HttpModule } from '@nestjs/axios'
 import { EmailModule } from '../email/email.module'
-import { UserModule } from '../user/user.module'
-import { ClientModule } from '../client/client.module'
+import { UsersModule } from '../users/users.module'
 
 @Module({
   imports: [
@@ -15,8 +14,7 @@ import { ClientModule } from '../client/client.module'
     ProjectModule,
     HttpModule,
     EmailModule,
-    UserModule,
-    ClientModule,
+    UsersModule,
   ],
   controllers: [InvoiceController],
   providers: [InvoiceService],

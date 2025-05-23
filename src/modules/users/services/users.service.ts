@@ -11,7 +11,7 @@ import { User, UserDocument, UserResponse } from '../entities/user.entity'
 import { CreateUserDto } from '../dto/create-user.dto'
 import { UpdateUserDto } from '../dto/update-user.dto'
 import * as bcrypt from 'bcrypt'
-import { UserRole } from '../../auth/enums/user-role.enum'
+import { UserRole } from '../../../shared/enums/role.enum'
 import { EmailService } from '../../email/email.service'
 import { ConfigService } from '@nestjs/config'
 
@@ -25,7 +25,10 @@ export class UsersService {
     private readonly configService: ConfigService
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<UserDocument> {
+  async create(
+    createUserDto: CreateUserDto,
+    companyId: string
+  ): Promise<UserDocument> {
     try {
       this.logger.log(
         `Intentando crear usuario: ${JSON.stringify(createUserDto)}`
@@ -33,6 +36,7 @@ export class UsersService {
 
       const existingUser = await this.userModel.findOne({
         email: createUserDto.email,
+        companyId,
       })
       if (existingUser) {
         this.logger.warn(`Usuario con email ${createUserDto.email} ya existe`)
@@ -50,7 +54,7 @@ export class UsersService {
       const userData = {
         ...createUserDto,
         password: hashedPassword,
-        companyId: createUserDto.companyId || null,
+        companyId,
       }
 
       this.logger.debug(
@@ -99,13 +103,13 @@ export class UsersService {
     }
   }
 
-  async findAll(companyId?: string): Promise<UserDocument[]> {
+  async findAll(companyId: string): Promise<UserDocument[]> {
     try {
       this.logger.log('Obteniendo todos los usuarios')
-      if (companyId) {
-        return await this.userModel.find({ companyId }).exec()
-      }
-      return await this.userModel.find().exec()
+      return await this.userModel
+        .find({ companyId })
+        .populate('companyId')
+        .exec()
     } catch (error) {
       this.logger.error(
         `Error al obtener usuarios: ${error.message}`,
@@ -115,24 +119,17 @@ export class UsersService {
     }
   }
 
-  async findOne(id: string, currentUser?: UserDocument): Promise<UserDocument> {
+  async findOne(id: string, companyId: string): Promise<UserDocument> {
     try {
       this.logger.log(`Buscando usuario con ID: ${id}`)
-      const user = await this.userModel.findById(id).exec()
+      const user = await this.userModel
+        .findOne({ _id: id, companyId })
+        .populate('companyId')
+        .exec()
       if (!user) {
         this.logger.warn(`Usuario con ID ${id} no encontrado`)
         throw new NotFoundException(`Usuario con ID ${id} no encontrado`)
       }
-
-      if (
-        currentUser?.role === UserRole.COMPANY &&
-        user.companyId !== currentUser.companyId
-      ) {
-        throw new ForbiddenException(
-          'You can only view users from your company'
-        )
-      }
-
       return user
     } catch (error) {
       this.logger.error(
@@ -164,27 +161,11 @@ export class UsersService {
   async update(
     id: string,
     updateUserDto: UpdateUserDto,
-    currentUser?: UserDocument
+    companyId: string
   ): Promise<UserDocument> {
     try {
       this.logger.log(`Actualizando usuario con ID: ${id}`)
-      const user = await this.findOne(id, currentUser)
-
-      if (
-        currentUser?.role === UserRole.COMPANY &&
-        user.companyId !== currentUser.companyId
-      ) {
-        throw new ForbiddenException(
-          'You can only update users from your company'
-        )
-      }
-
-      if (
-        currentUser?.role === UserRole.COMPANY &&
-        updateUserDto.role === UserRole.ADMIN
-      ) {
-        throw new ForbiddenException('You cannot assign the ADMIN role')
-      }
+      const user = await this.findOne(id, companyId)
 
       if (updateUserDto.role === UserRole.COMPANY && !updateUserDto.companyId) {
         this.logger.warn('Se requiere companyId para usuarios de tipo COMPANY')
@@ -193,13 +174,31 @@ export class UsersService {
         )
       }
 
+      if (
+        updateUserDto.role === UserRole.COMPANY &&
+        user.companyId !== updateUserDto.companyId
+      ) {
+        throw new ForbiddenException(
+          'You can only update users from your company'
+        )
+      }
+
       if (updateUserDto.password) {
         updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10)
       }
 
       const updatedUser = await this.userModel
-        .findByIdAndUpdate(id, { $set: updateUserDto }, { new: true })
+        .findOneAndUpdate(
+          { _id: id, companyId },
+          { $set: updateUserDto },
+          { new: true }
+        )
+        .populate('companyId')
         .exec()
+
+      if (!updatedUser) {
+        throw new NotFoundException('Usuario no encontrado')
+      }
 
       this.logger.log(`Usuario actualizado exitosamente: ${id}`)
       this.logger.debug(
@@ -221,21 +220,14 @@ export class UsersService {
     }
   }
 
-  async remove(id: string, currentUser?: UserDocument): Promise<void> {
+  async remove(id: string, companyId: string): Promise<void> {
     try {
       this.logger.log(`Eliminando usuario con ID: ${id}`)
-      const user = await this.findOne(id, currentUser)
+      const user = await this.findOne(id, companyId)
 
-      if (
-        currentUser?.role === UserRole.COMPANY &&
-        user.companyId !== currentUser.companyId
-      ) {
-        throw new ForbiddenException(
-          'You can only delete users from your company'
-        )
-      }
-
-      const result = await this.userModel.findByIdAndDelete(id).exec()
+      const result = await this.userModel
+        .findOneAndDelete({ _id: id, companyId })
+        .exec()
       if (!result) {
         this.logger.warn(`Usuario con ID ${id} no encontrado`)
         throw new NotFoundException(`Usuario con ID ${id} no encontrado`)
