@@ -12,35 +12,22 @@ import {
   Logger,
   Req,
 } from '@nestjs/common'
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiResponse,
-} from '@nestjs/swagger'
-import { UsersService } from '../services/users.service'
-import { CreateUserDto } from '../dto/create-user.dto'
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../../auth/guards/roles.guard'
 import { Roles } from '../../auth/decorators/roles.decorator'
 import { UserRole } from '../../../shared/enums/role.enum'
 import { UpdateUserDto } from '../dto/update-user.dto'
+import { UsersService } from '../services/users.service'
+import { CreateUserDto } from '../dto/create-user.dto'
 
-@ApiTags('users')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
   private readonly logger = new Logger(UsersController.name)
 
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
-  @ApiOperation({ summary: 'Crear un nuevo usuario' })
-  @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   async create(@Body() createUserDto: CreateUserDto, @Req() req: any) {
     try {
       this.logger.log(
@@ -88,12 +75,6 @@ export class UsersController {
     UserRole.ADMIN2,
     UserRole.COLABORADOR
   )
-  @ApiOperation({ summary: 'Obtener todos los usuarios' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de usuarios obtenida exitosamente',
-  })
-  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   async findAll(@Req() req: any) {
     try {
       this.logger.log('Recibida solicitud para obtener todos los usuarios')
@@ -144,10 +125,6 @@ export class UsersController {
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY, UserRole.PROVIDER)
-  @ApiOperation({ summary: 'Obtener un usuario por ID' })
-  @ApiResponse({ status: 200, description: 'Usuario encontrado exitosamente' })
-  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
-  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   async findOne(@Param('id') id: string, @Req() req: any) {
     try {
       this.logger.log(`Recibida solicitud para obtener usuario: ${id}`)
@@ -158,9 +135,7 @@ export class UsersController {
           role: req.user.role,
         })}`
       )
-
-      const companyId = req.user.companyId
-      const user = await this.usersService.findOne(id, companyId)
+      const user = await this.usersService.findOne(id)
       this.logger.log(`Usuario encontrado: ${id}`)
       return user
     } catch (error) {
@@ -177,10 +152,6 @@ export class UsersController {
 
   @Patch(':id')
   @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
-  @ApiOperation({ summary: 'Actualizar un usuario' })
-  @ApiResponse({ status: 200, description: 'Usuario actualizado exitosamente' })
-  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
-  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   async update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -214,10 +185,6 @@ export class UsersController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
-  @ApiOperation({ summary: 'Eliminar un usuario' })
-  @ApiResponse({ status: 204, description: 'Usuario eliminado exitosamente' })
-  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
-  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   async remove(@Param('id') id: string, @Req() req: any) {
     try {
       this.logger.log(`Recibida solicitud para eliminar usuario: ${id}`)

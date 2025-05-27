@@ -23,12 +23,12 @@ import { RolesGuard } from '../auth/guards/roles.guard'
 export class ExpenseController {
   private readonly logger = new Logger(ExpenseController.name)
 
-  constructor(private readonly expenseService: ExpenseService) {}
+  constructor(private readonly expenseService: ExpenseService) { }
 
   @Post('analyze-image')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
-  analyzeImage(@Body() body: CreateExpenseDto, @Request() req) {
+  // @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
+  analyzeImage(@Body() body: CreateExpenseDto) {
     return this.expenseService.analyzeImageWithUrl(body)
   }
 

@@ -11,8 +11,9 @@ import {
 } from './dto/create-project.dto'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
-import { Project, ProjectDocument } from './entities/project.entity'
+import { Project } from './entities/project.entity'
 import { IUser } from '../auth/interfaces/user.interface'
+import { UpdateProjectDto } from './dto/update-project.dto'
 
 @Injectable()
 export class ProjectService {
@@ -24,9 +25,10 @@ export class ProjectService {
     createProjectDto: CreateProjectDto,
     user: IUser
   ): Promise<Project> {
+    const companyIdObject = new Types.ObjectId(createProjectDto.companyId)
     const project = new this.projectModel({
       ...createProjectDto,
-      companyId: user.companyId,
+      companyId: companyIdObject,
       createdBy: user._id,
       updatedBy: user._id,
       status: createProjectDto.status || 'PENDIENTE',
@@ -35,10 +37,11 @@ export class ProjectService {
     return project.save()
   }
 
-  async findAll(user: IUser): Promise<Project[]> {
-    const query = user.role === 'ADMIN' ? {} : { companyId: user.companyId }
+  async findAll(companyId: string): Promise<Project[]> {
+    console.log(companyId)
+    const companyIdObject = new Types.ObjectId(companyId)
     return this.projectModel
-      .find(query)
+      .find({ companyId: companyIdObject })
       .populate('companyId')
       .populate('providerId', 'firstName lastName')
       .exec()
@@ -48,9 +51,10 @@ export class ProjectService {
     return this.projectModel.findById(id).exec()
   }
 
-  async findOne(id: string, user: IUser): Promise<Project> {
+  async findOne(id: string, companyId: string): Promise<Project> {
+    const companyIdObject = new Types.ObjectId(companyId)
     const project = await this.projectModel
-      .findOne({ _id: id, companyId: user.companyId })
+      .findOne({ _id: id, companyId: companyIdObject })
       .populate('companyId')
       .populate('providerId', 'firstName lastName')
       .exec()
@@ -60,9 +64,10 @@ export class ProjectService {
     return project
   }
 
-  async findByClient(clientId: string): Promise<Project[]> {
+  async findByClient(clientId: string, companyId: string): Promise<Project[]> {
+    const companyIdObject = new Types.ObjectId(companyId)
     const projects = await this.projectModel
-      .find({ clientId })
+      .find({ clientId, companyId: companyIdObject })
       .populate('clientId')
       .populate('companyId')
       .exec()
@@ -75,8 +80,9 @@ export class ProjectService {
   }
 
   async findByCompany(companyId: string): Promise<Project[]> {
+    const companyIdObject = new Types.ObjectId(companyId)
     const projects = await this.projectModel
-      .find({ companyId })
+      .find({ companyId: companyIdObject })
       .populate('clientId')
       .populate('companyId')
       .exec()
@@ -88,26 +94,30 @@ export class ProjectService {
     return projects
   }
 
-  async findByStatus(status: ProjectStatus): Promise<Project[]> {
+  async findByStatus(status: ProjectStatus, companyId: string): Promise<Project[]> {
+    const companyIdObject = new Types.ObjectId(companyId)
     return this.projectModel
-      .find({ status })
+      .find({ status, companyId: companyIdObject })
       .populate('clientId')
       .populate('companyId')
       .exec()
   }
 
-  async findByAssignedUser(userId: string): Promise<Project[]> {
+  async findByAssignedUser(userId: string, companyId: string): Promise<Project[]> {
+    const companyIdObject = new Types.ObjectId(companyId)
     return this.projectModel
-      .find({ assignedUsers: userId })
+      .find({ assignedUsers: userId, companyId: companyIdObject })
       .populate('clientId')
       .populate('companyId')
       .exec()
   }
 
-  async findByUser(userId: string): Promise<Project[]> {
+  async findByUser(userId: string, companyId: string): Promise<Project[]> {
+    const companyIdObject = new Types.ObjectId(companyId)
     const projects = await this.projectModel
       .find({
         $or: [{ assignedTo: userId }, { teamMembers: userId }],
+        companyId: companyIdObject
       })
       .populate('clientId')
       .populate('assignedTo')
@@ -121,39 +131,40 @@ export class ProjectService {
     return projects
   }
 
-  async update(
-    id: string,
-    updateProjectDto: Partial<CreateProjectDto>,
-    user: IUser
-  ): Promise<Project> {
-    const project = await this.projectModel
-      .findOne({ _id: id, companyId: user.companyId })
-      .exec()
-    if (!project) {
-      throw new NotFoundException('Proyecto no encontrado')
-    }
-    return this.projectModel
-      .findOneAndUpdate(
-        { _id: id, companyId: user.companyId },
-        { ...updateProjectDto, updatedBy: user._id },
-        { new: true }
-      )
-      .populate('companyId')
-      .exec()
-  }
+  // async update(
+  //   id: string,
+  //   updateProjectDto: Partial<CreateProjectDto>,
+  //   user: IUser
+  // ): Promise<Project> {
+  //   const project = await this.projectModel
+  //     .findOne({ _id: id, companyId: user.companyId })  
+  //     .exec()
+  //   if (!project) {
+  //     throw new NotFoundException('Proyecto no encontrado')
+  //   }
+  //   return this.projectModel
+  //     .findOneAndUpdate(
+  //       { _id: id, companyId: companyIdObject },
+  //       { ...updateProjectDto, updatedBy: user._id },
+  //       { new: true }
+  //     )
+  //     .populate('companyId')
+  //     .exec()
+  // }
 
   async updateStatus(
     id: string,
     updateStatusDto: UpdateProjectStatusDto,
     user: IUser
   ): Promise<Project> {
+    const companyIdObject = new Types.ObjectId(user.companyId)
     const project = await this.projectModel.findById(id).exec()
     if (!project) {
       throw new NotFoundException('Proyecto no encontrado')
     }
     if (
       user.role !== 'ADMIN' &&
-      project.companyId.toString() !== user.companyId.toString()
+      project.companyId.toString() !== companyIdObject.toString()
     ) {
       throw new NotFoundException('Proyecto no encontrado')
     }
@@ -165,6 +176,13 @@ export class ProjectService {
         { new: true }
       )
       .exec()
+  }
+
+  async update(
+    id: string,
+    updateProjectDto: UpdateProjectDto
+  ): Promise<Project> {
+    return this.projectModel.findByIdAndUpdate(id, updateProjectDto, { new: true })
   }
 
   async updateWorkStatus(
@@ -236,9 +254,9 @@ export class ProjectService {
     )
   }
 
-  async remove(id: string, user: IUser): Promise<void> {
+  async remove(id: string): Promise<void> {
     const result = await this.projectModel
-      .findOneAndDelete({ _id: id, companyId: user.companyId })
+      .findOneAndDelete({ _id: id })
       .exec()
     if (!result) {
       throw new NotFoundException('Proyecto no encontrado')

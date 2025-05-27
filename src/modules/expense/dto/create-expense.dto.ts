@@ -1,73 +1,37 @@
 import { IsString, IsOptional, IsNotEmpty, IsEnum } from 'class-validator'
-import { ApiProperty } from '@nestjs/swagger'
 import { ExpenseStatus } from '../entities/expense.entity'
 
 export class CreateExpenseDto {
-  @ApiProperty({
-    description: 'ID del proyecto asociado',
-    example: '1',
-  })
+
   @IsString()
   @IsNotEmpty()
   proyectId: string
 
-  @ApiProperty({
-    description: 'Clave de la categoría asociada',
-    example: 'food',
-  })
   @IsString()
   @IsNotEmpty()
-  category: string
+  categoryId: string
 
-  @ApiProperty({
-    description: 'URL de la imagen de la factura',
-    example: 'data:image/png;base64,...',
-  })
   @IsString()
   @IsNotEmpty()
   imageUrl: string
 
-  @ApiProperty({
-    description: 'Datos extraídos de la factura en formato JSON',
-    example: '{"rucEmisor":"12345678901","tipoComprobante":"Factura"}',
-    required: false,
-  })
   @IsString()
   @IsOptional()
   data?: string
 
-  @ApiProperty({
-    description: 'Total de la factura',
-    example: 100.5,
-    required: false,
-  })
+
   @IsOptional()
   total?: number
 
-  @ApiProperty({
-    description: 'Estado de la factura',
-    example: 'pending',
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending',
-    required: false,
-  })
   @IsEnum(['pending', 'approved', 'rejected'])
   @IsOptional()
   status?: ExpenseStatus
 
-  @ApiProperty({
-    description: 'ID del usuario que crea la factura',
-    example: '6543210abcdef',
-    required: false,
-  })
   @IsString()
   @IsOptional()
   userId?: string
 
-  @ApiProperty({
-    description: 'ID de la empresa asociada',
-    example: '1',
-  })
+
   @IsString()
   @IsNotEmpty()
   companyId: string

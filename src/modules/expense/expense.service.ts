@@ -40,6 +40,7 @@ export class ExpenseService {
   }
 
   async analyzeImageWithUrl(body: CreateExpenseDto): Promise<Expense> {
+    console.log('body', body)
     const prompt = PROMPT1
     try {
 
@@ -68,9 +69,13 @@ export class ExpenseService {
         .trim()
       const jsonObject = JSON.parse(jsonStringLimpio)
 
+      const categoryObject = Types.ObjectId.createFromHexString(body.categoryId)
+      const projectObject = Types.ObjectId.createFromHexString(body.proyectId)
+
       const expense = await this.expenseRepository.create({
         ...body,
-        projectId: Types.ObjectId.createFromHexString(body.proyectId),
+        categoryId: categoryObject,
+        proyectId: projectObject,
         total: jsonObject.montoTotal,
         data: JSON.stringify(jsonObject),
         file: body.imageUrl,
@@ -79,7 +84,6 @@ export class ExpenseService {
       })
 
       const project = await this.projectService.findOne2(body.proyectId)
-
       try {
         const admins = (await this.usersService.findAll(body.companyId)).filter(
           u => u.role === UserRole.ADMIN2 && u.isActive
@@ -92,8 +96,7 @@ export class ExpenseService {
           if (creatorId) {
             try {
               const creator = await this.usersService.findOne(
-                creatorId,
-                body.companyId
+                creatorId
               )
               if (creator) {
                 creatorName =
@@ -124,7 +127,7 @@ export class ExpenseService {
                   montoTotal: jsonObject.montoTotal || 0,
                   moneda: jsonObject.moneda || 'PEN',
                   createdBy: creatorName,
-                  category: body.category || 'No especificada',
+                  category: body.categoryId || 'No especificada',
                   projectName: project.name || 'No especificado',
                   razonSocial: jsonObject.razonSocial || 'No especificada',
                   direccionEmisor: jsonObject.direccionEmisor,
@@ -138,8 +141,7 @@ export class ExpenseService {
           if (body.userId) {
             try {
               const creator = await this.usersService.findOne(
-                body.userId,
-                body.companyId
+                body.userId
               )
               if (creator && creator.email) {
                 const creatorFullName =
@@ -161,7 +163,7 @@ export class ExpenseService {
                     montoTotal: jsonObject.montoTotal || 0,
                     moneda: jsonObject.moneda || 'PEN',
                     createdBy: creatorFullName,
-                    category: body.category || 'No especificada',
+                    category: body.categoryId || 'No especificada',
                     projectName: project.name || 'No especificado',
                     razonSocial: jsonObject.razonSocial || 'No especificada',
                     direccionEmisor: jsonObject.direccionEmisor,
@@ -191,8 +193,7 @@ export class ExpenseService {
             if (creatorId) {
               try {
                 const creator = await this.usersService.findOne(
-                  creatorId,
-                  body.companyId
+                  creatorId
                 )
                 if (creator) {
                   creatorName =
@@ -224,7 +225,7 @@ export class ExpenseService {
                       montoTotal: jsonObject.montoTotal || 0,
                       moneda: jsonObject.moneda || 'PEN',
                       createdBy: creatorName,
-                      category: body.category || 'No especificada',
+                      category: body.categoryId || 'No especificada',
                       projectName: project.name || 'No especificado',
                       razonSocial: jsonObject.razonSocial || 'No especificada',
                       direccionEmisor: jsonObject.direccionEmisor,
@@ -271,24 +272,30 @@ export class ExpenseService {
     companyId: string
   ): Promise<Expense> {
 
+    const companyIdObject = new Types.ObjectId(companyId)
+
     return this.expenseRepository.create({
       ...createExpenseDto,
-      companyId,
+      companyId: companyIdObject,
       status: 'pending',
     })
   }
 
   async findAll(companyId: string): Promise<Expense[]> {
+    const companyIdObject = new Types.ObjectId(companyId)
     return this.expenseRepository
-      .find({ companyId })
-      .populate('companyId')
+      .find({ companyId: companyIdObject })
+      .populate('proyectId')
+      .populate('categoryId')
       .exec()
   }
 
   async findOne(id: string, companyId: string): Promise<Expense> {
+    const companyIdObject = new Types.ObjectId(companyId)
     return this.expenseRepository
-      .findOne({ _id: id, companyId })
-      .populate('companyId')
+      .findOne({ _id: id, companyId: companyIdObject })
+      .populate('proyectId')
+      .populate('categoryId')
       .exec()
   }
 
@@ -297,7 +304,8 @@ export class ExpenseService {
     updateExpenseDto: UpdateExpenseDto,
     companyId: string
   ): Promise<Expense> {
-    if (updateExpenseDto.category) {
+    const companyIdObject = new Types.ObjectId(companyId)
+    if (updateExpenseDto.categoryId) {
       const expense = await this.findOne(id, companyId)
       if (!expense) {
         throw new NotFoundException(`Gasto con ID ${id} no encontrado`)
@@ -306,8 +314,9 @@ export class ExpenseService {
     }
 
     return this.expenseRepository
-      .findOneAndUpdate({ _id: id, companyId }, updateExpenseDto, { new: true })
+      .findOneAndUpdate({ _id: id, companyId: companyIdObject }, updateExpenseDto, { new: true })
       .populate('companyId')
+      .populate('categoryId')
       .exec()
   }
 
@@ -384,8 +393,7 @@ export class ExpenseService {
       } else if (validUserId) {
         try {
           const approver = await this.usersService.findOne(
-            validUserId,
-            companyId
+            validUserId
           )
           if (approver) {
             approverName =
@@ -416,8 +424,7 @@ export class ExpenseService {
           }
 
           const creator = await this.usersService.findOne(
-            expense.createdBy,
-            companyId
+            expense.createdBy
           )
 
           if (creator && creator.email) {
@@ -617,8 +624,7 @@ export class ExpenseService {
       } else if (validUserId) {
         try {
           const rejector = await this.usersService.findOne(
-            validUserId,
-            companyId
+            validUserId
           )
           if (rejector) {
             rejectorName =
@@ -651,8 +657,7 @@ export class ExpenseService {
           }
 
           const creator = await this.usersService.findOne(
-            expense.createdBy,
-            companyId
+            expense.createdBy
           )
 
           if (creator && creator.email) {
@@ -779,6 +784,7 @@ export class ExpenseService {
   }
 
   async remove(id: string, companyId: string): Promise<void> {
-    await this.expenseRepository.findOneAndDelete({ _id: id, companyId }).exec()
+    const companyIdObject = new Types.ObjectId(companyId)
+    await this.expenseRepository.findOneAndDelete({ _id: id, companyId: companyIdObject }).exec()
   }
 }

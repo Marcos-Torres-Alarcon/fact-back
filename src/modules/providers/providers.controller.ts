@@ -7,32 +7,25 @@ import {
   Param,
   Delete,
   UseGuards,
-  Req,
-  ForbiddenException,
-  Logger,
+  Req
 } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
-import { ProvidersService } from './providers.service'
-import { CreateProviderDto } from './dto/create-provider.dto'
-import { UpdateProviderDto } from './dto/update-provider.dto'
 import { Roles } from '../../decorators/roles.decorator'
 import { UserRole } from '../../shared/enums/role.enum'
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard'
 import { RolesGuard } from '../../guards/roles.guard'
 import { IRequest } from '../../shared/interfaces/request.interface'
+import { ProvidersService } from './providers.service'
+import { CreateProviderDto } from './dto/create-provider.dto'
+import { UpdateProviderDto } from './dto/update-provider.dto'
 
-@ApiTags('Proveedores')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('providers')
 export class ProvidersController {
-  private readonly logger = new Logger(ProvidersController.name)
 
-  constructor(private readonly providersService: ProvidersService) {}
+  constructor(private readonly providersService: ProvidersService) { }
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.COMPANY)
-  @ApiOperation({ summary: 'Crear un nuevo proveedor' })
   async create(
     @Body() createProviderDto: CreateProviderDto,
     @Req() req: IRequest
@@ -49,7 +42,6 @@ export class ProvidersController {
     UserRole.ACCOUNTING,
     UserRole.TREASURY
   )
-  @ApiOperation({ summary: 'Obtener todos los proveedores' })
   async findAll(@Req() req: IRequest) {
     const companyId = req.user.companyId
     return this.providersService.findAll(companyId)
@@ -57,7 +49,6 @@ export class ProvidersController {
 
   @Get('company/:companyId')
   @Roles(UserRole.ADMIN, UserRole.COMPANY)
-  @ApiOperation({ summary: 'Obtener proveedores por compañía' })
   async findByCompany(
     @Param('companyId') companyId: string,
     @Req() req: IRequest
@@ -68,17 +59,17 @@ export class ProvidersController {
     return this.providersService.findByCompanyId(companyId)
   }
 
-  @Get(':id')
+  @Get(':id/:companyId')
   @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.PROVIDER)
-  @ApiOperation({ summary: 'Obtener un proveedor por ID' })
-  async findOne(@Param('id') id: string, @Req() req: IRequest) {
-    const companyId = req.user.companyId
+  async findOne(@Param('id') id: string, @Param('companyId') companyId: string, @Req() req: IRequest) {
+    if (req.user.role === UserRole.COMPANY) {
+      companyId = req.user.companyId
+    }
     return this.providersService.findById(id, companyId)
   }
 
   @Patch(':id')
   @Roles(UserRole.ADMIN, UserRole.COMPANY)
-  @ApiOperation({ summary: 'Actualizar un proveedor' })
   async update(
     @Param('id') id: string,
     @Body() updateProviderDto: UpdateProviderDto,
@@ -90,9 +81,8 @@ export class ProvidersController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN, UserRole.COMPANY)
-  @ApiOperation({ summary: 'Eliminar un proveedor' })
   async remove(@Param('id') id: string, @Req() req: IRequest) {
     const companyId = req.user.companyId
-    return this.providersService.remove(id, companyId)
+    return this.providersService.remove(id)
   }
 }

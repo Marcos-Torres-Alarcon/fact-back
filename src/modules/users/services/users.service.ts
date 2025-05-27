@@ -23,7 +23,7 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService
-  ) {}
+  ) { }
 
   async create(
     createUserDto: CreateUserDto,
@@ -119,11 +119,11 @@ export class UsersService {
     }
   }
 
-  async findOne(id: string, companyId: string): Promise<UserDocument> {
+  async findOne(id: string): Promise<UserDocument> {
     try {
       this.logger.log(`Buscando usuario con ID: ${id}`)
       const user = await this.userModel
-        .findOne({ _id: id, companyId })
+        .findOne({ _id: id })
         .populate('companyId')
         .exec()
       if (!user) {
@@ -148,7 +148,7 @@ export class UsersService {
         this.logger.warn(`Usuario con email ${email} no encontrado`)
         throw new NotFoundException(`Usuario con email ${email} no encontrado`)
       }
-      return user
+      return user.toObject()
     } catch (error) {
       this.logger.error(
         `Error al buscar usuario por email: ${error.message}`,
@@ -165,7 +165,6 @@ export class UsersService {
   ): Promise<UserDocument> {
     try {
       this.logger.log(`Actualizando usuario con ID: ${id}`)
-      const user = await this.findOne(id, companyId)
 
       if (updateUserDto.role === UserRole.COMPANY && !updateUserDto.companyId) {
         this.logger.warn('Se requiere companyId para usuarios de tipo COMPANY')
@@ -175,8 +174,7 @@ export class UsersService {
       }
 
       if (
-        updateUserDto.role === UserRole.COMPANY &&
-        user.companyId !== updateUserDto.companyId
+        updateUserDto.role === UserRole.COMPANY
       ) {
         throw new ForbiddenException(
           'You can only update users from your company'
@@ -223,7 +221,6 @@ export class UsersService {
   async remove(id: string, companyId: string): Promise<void> {
     try {
       this.logger.log(`Eliminando usuario con ID: ${id}`)
-      const user = await this.findOne(id, companyId)
 
       const result = await this.userModel
         .findOneAndDelete({ _id: id, companyId })

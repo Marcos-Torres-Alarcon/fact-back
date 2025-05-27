@@ -21,15 +21,6 @@ import {
 import { InvoiceService } from './invoice.service'
 import { CreateInvoiceDto, InvoiceStatus } from './dto/create-invoice.dto'
 import { UpdateInvoiceDto } from './dto/update-invoice.dto'
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-  ApiConsumes,
-} from '@nestjs/swagger'
-import { Invoice } from './entities/invoice.entity'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../auth/guards/roles.guard'
 import { Roles } from '../auth/decorators/roles.decorator'
@@ -38,17 +29,15 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express'
 import { Response } from 'express'
 import { EmailService } from '../email/email.service'
 
-@ApiTags('invoices')
 @Controller('invoices')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@ApiBearerAuth()
 export class InvoiceController {
   private readonly logger = new Logger(InvoiceController.name)
 
   constructor(
     private readonly invoiceService: InvoiceService,
     private readonly emailService: EmailService
-  ) {}
+  ) { }
 
   @Get('token-sunat')
   getToken() {
@@ -115,20 +104,6 @@ export class InvoiceController {
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.PROVIDER)
-  @ApiOperation({ summary: 'Crear una nueva factura' })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Factura creada exitosamente',
-    type: Invoice,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Datos de factura inválidos',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Cliente o proyecto no encontrado',
-  })
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createInvoiceDto: CreateInvoiceDto, @Req() req: any) {
     const companyId = req.user.companyId
@@ -144,12 +119,6 @@ export class InvoiceController {
     UserRole.ACCOUNTING,
     UserRole.TREASURY
   )
-  @ApiOperation({ summary: 'Obtener todas las facturas' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Lista de facturas obtenida exitosamente',
-    type: [Invoice],
-  })
   findAll(@Req() req: any) {
     const companyId = req.user.companyId
     return this.invoiceService.findAll(companyId)
@@ -157,17 +126,6 @@ export class InvoiceController {
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER, UserRole.ACCOUNTING)
-  @ApiOperation({ summary: 'Obtener una factura por ID' })
-  @ApiParam({ name: 'id', description: 'ID de la factura' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Factura encontrada exitosamente',
-    type: Invoice,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Factura no encontrada',
-  })
   findOne(@Param('id') id: string, @Req() req: any) {
     const companyId = req.user.companyId
     return this.invoiceService.findOne(id, companyId)
@@ -175,55 +133,19 @@ export class InvoiceController {
 
   @Get('client/:client')
   @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
-  @ApiOperation({ summary: 'Obtener facturas por cliente' })
-  @ApiParam({ name: 'client', description: 'ID del cliente' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Lista de facturas del cliente obtenida exitosamente',
-    type: [Invoice],
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Cliente no encontrado',
-  })
   findByClient(@Param('client') clientId: string) {
     return this.invoiceService.findByClient(clientId)
   }
 
   @Get('project/:project')
   @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
-  @ApiOperation({ summary: 'Obtener facturas por proyecto' })
-  @ApiParam({ name: 'project', description: 'ID del proyecto' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Lista de facturas del proyecto obtenida exitosamente',
-    type: [Invoice],
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Proyecto no encontrado',
-  })
   findByProject(@Param('project') projectId: string) {
     return this.invoiceService.findByProject(projectId)
   }
 
   @Patch(':id')
   @Roles(UserRole.ADMIN, UserRole.PROVIDER)
-  @ApiOperation({ summary: 'Actualizar una factura' })
-  @ApiParam({ name: 'id', description: 'ID de la factura' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Factura actualizada exitosamente',
-    type: Invoice,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Factura no encontrada',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Datos de actualización inválidos',
-  })
+  @HttpCode(HttpStatus.OK)
   update(
     @Param('id') id: string,
     @Body() updateInvoiceDto: UpdateInvoiceDto,
@@ -235,8 +157,6 @@ export class InvoiceController {
 
   @Patch(':id/status')
   @Roles(UserRole.ACCOUNTING)
-  @ApiOperation({ summary: 'Actualizar estado de una factura' })
-  @ApiResponse({ status: 200, description: 'Estado actualizado exitosamente' })
   async updateStatus(
     @Param('id') id: string,
     @Body() body: { status: InvoiceStatus; reason?: string },
@@ -253,16 +173,6 @@ export class InvoiceController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN, UserRole.PROVIDER)
-  @ApiOperation({ summary: 'Eliminar una factura' })
-  @ApiParam({ name: 'id', description: 'ID de la factura' })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'Factura eliminada exitosamente',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Factura no encontrada',
-  })
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @Req() req: any) {
     const companyId = req.user.companyId
@@ -286,21 +196,6 @@ export class InvoiceController {
     })
   )
   @Roles(UserRole.ADMIN, UserRole.PROVIDER)
-  @ApiOperation({ summary: 'Subir acta de aceptación para una factura' })
-  @ApiParam({ name: 'id', description: 'ID de la factura' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Acta de aceptación subida exitosamente',
-    type: Invoice,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Factura no encontrada',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Archivo inválido o no permitido',
-  })
   async uploadActaAceptacion(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File
@@ -315,17 +210,6 @@ export class InvoiceController {
   }
 
   @Get(':id/acta-aceptacion/download')
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.USER)
-  @ApiOperation({ summary: 'Descargar acta de aceptación de una factura' })
-  @ApiParam({ name: 'id', description: 'ID de la factura' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Acta de aceptación descargada exitosamente',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Factura o acta de aceptación no encontrada',
-  })
   async downloadActaAceptacion(@Param('id') id: string, @Res() res: Response) {
     const { buffer, filename } =
       await this.invoiceService.downloadActaAceptacion(id)
@@ -356,9 +240,6 @@ export class InvoiceController {
 
   @Post('upload')
   @UseInterceptors(FilesInterceptor('files', 2))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Subir factura y acta de aceptación' })
-  @ApiResponse({ status: 201, description: 'Archivos subidos exitosamente' })
   async uploadInvoiceAndActa(
     @UploadedFiles() files: Express.Multer.File[],
     @Req() req: any
@@ -397,11 +278,6 @@ export class InvoiceController {
 
   @Put(':id/payment-status')
   @Roles(UserRole.TREASURY)
-  @ApiOperation({ summary: 'Actualizar estado de pago de una factura' })
-  @ApiResponse({
-    status: 200,
-    description: 'Estado de pago actualizado exitosamente',
-  })
   async updatePaymentStatus(
     @Param('id') id: string,
     @Body() body: { status: 'APPROVED' | 'REJECTED'; rejectionReason?: string }

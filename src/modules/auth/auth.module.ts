@@ -7,24 +7,18 @@ import { JwtStrategy } from './strategies/jwt.strategy'
 import { AuthController } from './auth.controller'
 import { GoogleStrategy } from './strategies/google.strategy'
 import { MongooseModule } from '@nestjs/mongoose'
-import { ConfigModule, ConfigService } from '@nestjs/config'
 import { UsersModule } from '../users/users.module'
 import { Provider, ProviderSchema } from '../providers/entities/provider.entity'
 import { ProvidersModule } from '../providers/providers.module'
 import { User, UserSchema } from '../users/entities/user.entity'
+import { jwtConstants } from './constants/jwt.constants'
 
 @Module({
   imports: [
     PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1d',
-        },
-      }),
-      inject: [ConfigService],
+    JwtModule.register({
+      secret: jwtConstants.secret,
+      signOptions: { expiresIn: '24h' },
     }),
     MongooseModule.forFeature([
       { name: Provider.name, schema: ProviderSchema },
@@ -37,4 +31,4 @@ import { User, UserSchema } from '../users/entities/user.entity'
   controllers: [AuthController],
   exports: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule { }

@@ -1,11 +1,10 @@
 import {
   Injectable,
   Logger,
-  ConflictException,
-  BadRequestException,
+  ConflictException
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { Provider } from './entities/provider.entity'
 import {
   IProvider,
@@ -23,7 +22,7 @@ export class ProvidersService {
     @InjectModel(Provider.name)
     private providerModel: Model<Provider>,
     private readonly bcryptService: BcryptService
-  ) {}
+  ) { }
 
   private toIProvider(doc: Provider & Document): IProvider {
     const provider = doc.toObject()
@@ -38,12 +37,13 @@ export class ProvidersService {
     createProviderDto: CreateProviderDTO,
     companyId: string
   ): Promise<IProvider> {
+    const companyIdObject = new Types.ObjectId(companyId)
     this.logger.debug(
       `Creando proveedor con datos: ${JSON.stringify(createProviderDto)}`
     )
 
     const existingProvider = await this.providerModel
-      .findOne({ email: createProviderDto.email, companyId })
+      .findOne({ email: createProviderDto.email, companyId: companyIdObject })
       .exec()
     if (existingProvider) {
       this.logger.warn(
@@ -103,6 +103,7 @@ export class ProvidersService {
   }
 
   async findByCompanyId(companyId: string): Promise<IProvider[]> {
+    const companyIdObject = new Types.ObjectId(companyId)
     this.logger.debug(
       `findByCompanyId - Searching for providers with companyId: ${companyId}`
     )
@@ -113,7 +114,7 @@ export class ProvidersService {
       }
 
       const providers = await this.providerModel
-        .find({ companyId })
+        .find({ companyId: companyIdObject })
         .populate('companyId')
         .exec()
       this.logger.debug(`findByCompanyId - Found ${providers.length} providers`)
@@ -130,25 +131,28 @@ export class ProvidersService {
     }
   }
 
-  async findByEmail(email: string): Promise<IProvider> {
-    const provider = await this.providerModel.findOne({ email }).exec()
+  async findByEmail(email: string, companyId: string): Promise<IProvider> {
+    const companyIdObject = new Types.ObjectId(companyId)
+    const provider = await this.providerModel.findOne({ email, companyId: companyIdObject }).exec()
     return provider ? this.toIProvider(provider) : null
   }
 
-  async findByTaxId(taxId: string): Promise<IProvider> {
-    const provider = await this.providerModel.findOne({ taxId }).exec()
+  async findByTaxId(taxId: string, companyId: string): Promise<IProvider> {
+    const companyIdObject = new Types.ObjectId(companyId)
+    const provider = await this.providerModel.findOne({ taxId, companyId: companyIdObject }).exec()
     return provider ? this.toIProvider(provider) : null
   }
 
   async findAll(companyId: string): Promise<IProvider[]> {
+    const companyIdObject = new Types.ObjectId(companyId)
     const providers = await this.providerModel
-      .find({ companyId })
+      .find({ companyId: companyIdObject })
       .populate('companyId')
       .exec()
     return providers.map(provider => this.toIProvider(provider))
   }
 
-  async remove(id: string, companyId: string): Promise<void> {
-    await this.providerModel.findOneAndDelete({ _id: id, companyId }).exec()
+  async remove(id: string): Promise<void> {
+    await this.providerModel.findOneAndDelete({ _id: id }).exec()
   }
 }

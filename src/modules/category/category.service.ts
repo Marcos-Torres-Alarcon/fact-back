@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { Category, CategoryDocument } from './entities/category.entity'
 import { CreateCategoryDto } from './dto/create-category.dto'
 import { UpdateCategoryDto } from './dto/update-category.dto'
@@ -12,17 +12,18 @@ export class CategoryService {
   constructor(
     @InjectModel(Category.name)
     private categoryModel: Model<CategoryDocument>
-  ) {}
+  ) { }
 
   async create(
     createCategoryDto: CreateCategoryDto
   ): Promise<CategoryDocument> {
+    const companyIdObject = new Types.ObjectId(createCategoryDto.companyId)
     try {
       if (!createCategoryDto.key && createCategoryDto.name) {
         createCategoryDto.key = this.generateKey(createCategoryDto.name)
       }
 
-      const newCategory = new this.categoryModel(createCategoryDto)
+      const newCategory = new this.categoryModel({ ...createCategoryDto, companyId: companyIdObject })
       return await newCategory.save()
     } catch (error) {
       this.logger.error(
@@ -34,8 +35,9 @@ export class CategoryService {
   }
 
   async findAll(companyId: string): Promise<CategoryDocument[]> {
+    const companyIdObject = new Types.ObjectId(companyId)
     try {
-      return await this.categoryModel.find({ companyId }).exec()
+      return await this.categoryModel.find({ companyId: companyIdObject }).populate('companyId').exec()
     } catch (error) {
       this.logger.error(
         `Error al obtener categorías: ${error.message}`,
@@ -46,9 +48,11 @@ export class CategoryService {
   }
 
   async findOne(id: string, companyId: string): Promise<CategoryDocument> {
+    const companyIdObject = new Types.ObjectId(companyId)
     try {
       const category = await this.categoryModel
-        .findOne({ _id: id, companyId })
+        .findOne({ _id: id, companyId: companyIdObject })
+        .populate('companyId')
         .exec()
       if (!category) {
         throw new NotFoundException(`Categoría con ID ${id} no encontrada`)
@@ -64,9 +68,11 @@ export class CategoryService {
   }
 
   async findByKey(key: string, companyId: string): Promise<CategoryDocument> {
+    const companyIdObject = new Types.ObjectId(companyId)
     try {
       const category = await this.categoryModel
-        .findOne({ key, companyId })
+        .findOne({ key, companyId: companyIdObject })
+        .populate('companyId')
         .exec()
       if (!category) {
         throw new NotFoundException(`Categoría con clave ${key} no encontrada`)
@@ -86,6 +92,7 @@ export class CategoryService {
     updateCategoryDto: UpdateCategoryDto,
     companyId: string
   ): Promise<CategoryDocument> {
+    const companyIdObject = new Types.ObjectId(companyId)
     try {
       if (
         updateCategoryDto.name &&
@@ -96,7 +103,7 @@ export class CategoryService {
       }
 
       const updatedCategory = await this.categoryModel
-        .findOneAndUpdate({ _id: id, companyId }, updateCategoryDto, {
+        .findOneAndUpdate({ _id: id, companyId: companyIdObject }, updateCategoryDto, {
           new: true,
         })
         .exec()
@@ -116,9 +123,10 @@ export class CategoryService {
   }
 
   async remove(id: string, companyId: string): Promise<void> {
+    const companyIdObject = new Types.ObjectId(companyId)
     try {
       const result = await this.categoryModel
-        .findOneAndDelete({ _id: id, companyId })
+        .findOneAndDelete({ _id: id, companyId: companyIdObject })
         .exec()
       if (!result) {
         throw new NotFoundException(`Categoría con ID ${id} no encontrada`)

@@ -324,7 +324,6 @@ export class InvoiceService {
       const response = await firstValueFrom(
         this.httpService.post(api, data, { headers })
       )
-      console.log(response.data)
       return response.data
     } catch (error) {
       console.log(error)
@@ -558,7 +557,6 @@ export class InvoiceService {
     }
 
     // Monto Total (Busca variantes de "TOTAL" seguido de una moneda y un número con decimales)
-    console.log(text)
     match = text.match(
       /(?:IMPORTE\s*TOTAL|SUMA\s*TOTAL|MONTO\s*TOTAL|VALOR\s*TOTAL)\s*:(?:(S\/|PEN|USD|\$)\s*)?\s*([\d,]+\.\d{2})\b/i
     )

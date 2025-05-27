@@ -1,4 +1,3 @@
-import { ApiProperty } from '@nestjs/swagger'
 import {
   IsString,
   IsNotEmpty,
@@ -14,60 +13,43 @@ import {
 import { UserRole } from '../../../shared/enums/role.enum'
 
 export class CreateUserDto {
-  @ApiProperty({ description: 'ID del usuario (opcional)' })
   @IsMongoId()
   @IsOptional()
   _id?: string
 
-  @ApiProperty({ description: 'ID único del usuario' })
   @IsString()
   @IsNotEmpty()
   userId: string
 
-  @ApiProperty({ description: 'Nombre del usuario' })
   @IsString()
   @IsNotEmpty()
   firstName: string
 
-  @ApiProperty({ description: 'Apellido del usuario' })
   @IsString()
   @IsNotEmpty()
   lastName: string
 
-  @ApiProperty({ description: 'Correo electrónico del usuario' })
   @IsNotEmpty()
   email: string
 
-  @ApiProperty({ description: 'Contraseña del usuario', minLength: 6 })
   @IsString()
   @MinLength(6)
   @IsNotEmpty()
   password: string
 
-  @ApiProperty({ description: 'Teléfono del usuario (opcional)' })
   @IsString()
   @IsOptional()
   phone?: string
 
-  @ApiProperty({
-    description: 'Rol del usuario',
-    enum: UserRole,
-    enumName: 'UserRole',
-    example: UserRole.USER,
-  })
   @IsEnum(UserRole)
   @IsNotEmpty()
   role: UserRole
 
-  @ApiProperty({
-    description: 'ID de la compañía (requerido para rol COMPANY)',
-  })
   @ValidateIf(o => o.role === UserRole.COMPANY)
   @IsMongoId()
   @IsNotEmpty()
   companyId?: string
 
-  @ApiProperty({ description: 'Estado del usuario', default: true })
   @IsBoolean()
   @IsOptional()
   isActive?: boolean

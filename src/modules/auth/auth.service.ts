@@ -48,7 +48,7 @@ export class AuthService {
     private userModel: Model<UserDocument>,
     @InjectModel(Provider.name)
     private providerModel: Model<ProviderDocument>
-  ) {}
+  ) { }
 
   async register(
     registerDto: RegisterDto
@@ -87,71 +87,97 @@ export class AuthService {
     }
   }
 
-  async login(loginDto: LoginDto): Promise<{
-    success: boolean
-    data: { user: UserResponse; token: string }
-  }> {
-    const user = await this.validateUser(loginDto.email, loginDto.password)
+  async login(userData: LoginDto) {
+
+    const user = await this.validateUser(userData.email, userData.password);
     if (!user) {
-      throw new UnauthorizedException('Credenciales inválidas')
+      throw new BadRequestException('Credenciales inválidas');
     }
-
-    if (!user.isActive) {
-      throw new ForbiddenException('La cuenta está desactivada')
+    const payload = {
+      email: user.email,
+      userId: user._id.toString(),
+      roles: [user.role]
     }
-
-    const token = this.generateToken(user)
-    const { password, ...userResponse } = user.toObject()
-
     return {
-      success: true,
-      data: {
-        user: userResponse,
-        token,
-      },
-    }
+      access_token: this.jwtService.sign(payload),
+      ...user,
+    };
   }
 
-  async validateUser(
-    email: string,
-    password: string
-  ): Promise<UserDocument | ProviderDocument | null> {
-    try {
-      this.logger.debug(`Validando usuario: ${email}`)
-
-      const user = await this.userModel.findOne({ email }).exec()
-      if (user) {
-        const isPasswordValid = await bcrypt.compare(password, user.password)
-        if (!isPasswordValid) {
-          this.logger.warn(`Contraseña inválida para usuario: ${email}`)
-          return null
-        }
-        return user
-      }
-
-      const provider = await this.providerModel.findOne({ email }).exec()
-      if (provider) {
-        const isPasswordValid = await bcrypt.compare(
-          password,
-          provider.password
-        )
-        if (!isPasswordValid) {
-          this.logger.warn(`Contraseña inválida para proveedor: ${email}`)
-          return null
-        }
-        return provider
-      }
-
-      this.logger.warn(`Usuario/Proveedor no encontrado: ${email}`)
-      return null
-    } catch (error) {
-      this.logger.error(
-        `Error al validar usuario/proveedor: ${error.message}`,
-        error.stack
-      )
-      throw error
+  async validateUser(email: string, password: string): Promise<any> {
+    const user = await this.usersService.findByEmail(email);
+    if (user && await bcrypt.compare(password, user.password)) {
+      const { password, ...result } = user;
+      return result;
     }
+    return null;
   }
+
+  // async login(loginDto: LoginDto): Promise<{
+  //   success: boolean
+  //   data: { user: UserResponse; token: string }
+  // }> {
+  //   const user = await this.validateUser(loginDto.email, loginDto.password)
+  //   if (!user) {
+  //     throw new UnauthorizedException('Credenciales inválidas')
+  //   }
+
+  //   if (!user.isActive) {
+  //     throw new ForbiddenException('La cuenta está desactivada')
+  //   }
+
+  //   const token = this.generateToken(user)
+  //   const { password, ...userResponse } = user.toObject()
+
+  //   return {
+  //     success: true,
+  //     data: {
+  //       user: userResponse,
+  //       token,
+  //     },
+  //   }
+  // }
+
+  // async validateUser(
+  //   email: string,
+  //   password: string
+  // ): Promise<UserDocument | ProviderDocument | null> {
+  //   try {
+  //     this.logger.debug(`Validando usuario: ${email}`)
+
+  //     const user = await this.userModel.findOne({ email }).exec()
+  //     if (user) {
+  //       const isPasswordValid = await bcrypt.compare(password, user.password)
+  //       if (!isPasswordValid) {
+  //         this.logger.warn(`Contraseña inválida para usuario: ${email}`)
+  //         return null
+  //       }
+  //       return user
+  //     }
+
+  //     const provider = await this.providerModel.findOne({ email }).exec()
+  //     if (provider) {
+  //       const isPasswordValid = await bcrypt.compare(
+  //         password,
+  //         provider.password
+  //       )
+  //       if (!isPasswordValid) {
+  //         this.logger.warn(`Contraseña inválida para proveedor: ${email}`)
+  //         return null
+  //       }
+  //       return provider
+  //     }
+
+  //     this.logger.warn(`Usuario/Proveedor no encontrado: ${email}`)
+  //     return null
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Error al validar usuario/proveedor: ${error.message}`,
+  //       error.stack
+  //     )
+  //     throw error
+  //   }
+  // }
 
   private generateToken(user: UserDocument | ProviderDocument): string {
     try {

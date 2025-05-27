@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document } from 'mongoose'
+import { Document, Types } from 'mongoose'
 
 export enum InvoiceStatus {
   PENDING = 'PENDING',
@@ -39,6 +39,9 @@ export class Invoice extends Document {
 
   @Prop({ required: false })
   actaUrl?: string
+
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Company' })
+  companyId: Types.ObjectId
 }
 
 export const InvoiceSchema = SchemaFactory.createForClass(Invoice)

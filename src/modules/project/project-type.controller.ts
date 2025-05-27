@@ -26,11 +26,11 @@ import { UserRole } from '../auth/enums/user-role.enum'
 @Controller('project-types')
 @ApiBearerAuth()
 export class ProjectTypeController {
-  constructor(private readonly projectTypeService: ProjectTypeService) {}
+  constructor(private readonly projectTypeService: ProjectTypeService) { }
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
-  // @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Crear un nuevo tipo de proyecto' })
   @ApiResponse({
     status: 201,
@@ -63,7 +63,7 @@ export class ProjectTypeController {
   }
 
   @Patch(':id/:companyId')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Actualizar un tipo de proyecto' })
   @ApiResponse({
@@ -80,7 +80,7 @@ export class ProjectTypeController {
   }
 
   @Delete(':id/:companyId')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   @ApiOperation({ summary: 'Eliminar un tipo de proyecto' })
   @ApiResponse({
