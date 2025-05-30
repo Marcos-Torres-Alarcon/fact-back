@@ -17,6 +17,7 @@ import {
   UploadedFiles,
   Req,
   Put,
+  Query,
 } from '@nestjs/common'
 import { InvoiceService } from './invoice.service'
 import { CreateInvoiceDto, InvoiceStatus } from './dto/create-invoice.dto'
@@ -37,7 +38,7 @@ export class InvoiceController {
   constructor(
     private readonly invoiceService: InvoiceService,
     private readonly emailService: EmailService
-  ) { }
+  ) {}
 
   @Get('token-sunat')
   getToken() {
@@ -119,9 +120,9 @@ export class InvoiceController {
     UserRole.ACCOUNTING,
     UserRole.TREASURY
   )
-  findAll(@Req() req: any) {
+  findAll(@Req() req: any, @Query() query: any) {
     const companyId = req.user.companyId
-    return this.invoiceService.findAll(companyId)
+    return this.invoiceService.findAll(companyId, query)
   }
 
   @Get(':id')

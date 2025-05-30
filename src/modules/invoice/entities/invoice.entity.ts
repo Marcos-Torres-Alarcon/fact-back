@@ -29,8 +29,8 @@ export class Invoice extends Document {
   @Prop({ required: true })
   correlativo: string
 
-  @Prop({ required: true })
-  fechaEmision: string
+  @Prop({ type: Date, required: false })
+  fechaEmision?: Date
 
   @Prop({ required: true })
   moneda: string
@@ -86,11 +86,11 @@ export interface Invoice {
   _id: string
   providerName: string
   invoiceNumber: string
-  date: Date
+  date: Date | string
   type: string
   status: string
   rejectionReason?: string
-  createdAt: Date
+  createdAt: Date | string
   pdfUrl?: string
   xmlUrl?: string
   actaUrl?: string

@@ -9,6 +9,7 @@ import {
   Request,
   UseGuards,
   Logger,
+  Query,
 } from '@nestjs/common'
 import { ExpenseService } from './expense.service'
 import { CreateExpenseDto } from './dto/create-expense.dto'
@@ -23,7 +24,7 @@ import { RolesGuard } from '../auth/guards/roles.guard'
 export class ExpenseController {
   private readonly logger = new Logger(ExpenseController.name)
 
-  constructor(private readonly expenseService: ExpenseService) { }
+  constructor(private readonly expenseService: ExpenseService) {}
 
   @Post('analyze-image')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -41,8 +42,8 @@ export class ExpenseController {
   }
 
   @Get(':companyId')
-  findAll(@Param('companyId') companyId: string) {
-    return this.expenseService.findAll(companyId)
+  findAll(@Param('companyId') companyId: string, @Query() query: any) {
+    return this.expenseService.findAll(companyId, query)
   }
 
   @Get(':id/:companyId')

@@ -30,7 +30,7 @@ import { UpdateProjectDto } from './dto/update-project.dto'
 @Controller('projects')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) { }
+  constructor(private readonly projectService: ProjectService) {}
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
@@ -39,47 +39,89 @@ export class ProjectController {
   }
 
   @Get(':companyId')
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY, UserRole.PROVIDER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.COMPANY,
+    UserRole.PROVIDER,
+    UserRole.COLABORADOR
+  )
   findAll(@Param('companyId') companyId: string) {
     return this.projectService.findAll(companyId)
   }
 
   @Get(':id/:companyId')
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY, UserRole.PROVIDER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.COMPANY,
+    UserRole.PROVIDER,
+    UserRole.COLABORADOR
+  )
   findOne(@Param('id') id: string, @Param('companyId') companyId: string) {
     return this.projectService.findOne(id, companyId)
   }
 
   @Get('client/:client/:companyId')
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.PROVIDER, UserRole.USER)
-  findByClient(@Param('client') clientId: string, @Param('companyId') companyId: string) {
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.PROVIDER,
+    UserRole.USER,
+    UserRole.COLABORADOR
+  )
+  findByClient(
+    @Param('client') clientId: string,
+    @Param('companyId') companyId: string
+  ) {
     return this.projectService.findByClient(clientId, companyId)
   }
 
   @Get('company/:companyId')
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.PROVIDER, UserRole.USER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.PROVIDER,
+    UserRole.USER,
+    UserRole.COLABORADOR
+  )
   findByCompany(@Param('companyId') companyId: string) {
     return this.projectService.findByCompany(companyId)
   }
 
   @Get('status/:status/:companyId')
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.PROVIDER, UserRole.USER)
-  findByStatus(@Param('status') status: ProjectStatus, @Param('companyId') companyId: string) {
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.PROVIDER,
+    UserRole.USER,
+    UserRole.COLABORADOR
+  )
+  findByStatus(
+    @Param('status') status: ProjectStatus,
+    @Param('companyId') companyId: string
+  ) {
     return this.projectService.findByStatus(status, companyId)
   }
 
   @Get('user/:userId/:companyId')
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.PROVIDER, UserRole.USER)
-  findByUser(@Param('userId') userId: string, @Param('companyId') companyId: string) {
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.PROVIDER,
+    UserRole.USER,
+    UserRole.COLABORADOR
+  )
+  findByUser(
+    @Param('userId') userId: string,
+    @Param('companyId') companyId: string
+  ) {
     return this.projectService.findByUser(userId, companyId)
   }
 
   @Patch(':id/:companyId')
   @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
-  update(
-    @Param('id') id: string,
-    @Body() updateProyectDto: UpdateProjectDto
-  ) {
+  update(@Param('id') id: string, @Body() updateProyectDto: UpdateProjectDto) {
     return this.projectService.update(id, updateProyectDto)
   }
 

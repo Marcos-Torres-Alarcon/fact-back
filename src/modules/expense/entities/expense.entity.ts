@@ -16,6 +16,7 @@ export interface ExpenseDocument extends Document {
   rejectedBy?: string
   rejectionReason?: string
   companyId: string
+  fechaEmision?: Date
 }
 
 export interface GetExpenseDocument extends ExpenseDocument {
@@ -62,6 +63,9 @@ export class Expense {
 
   @Prop({ type: 'ObjectId', ref: 'Company', required: true })
   companyId: string
+
+  @Prop({ type: Date, required: false })
+  fechaEmision?: Date
 }
 
 export const ExpenseSchema = SchemaFactory.createForClass(Expense)

@@ -43,7 +43,6 @@ export class ExpenseService {
     console.log('body', body)
     const prompt = PROMPT1
     try {
-
       const response = await this.openai.chat.completions.create({
         model: this.visionModel,
         messages: [
@@ -81,6 +80,9 @@ export class ExpenseService {
         file: body.imageUrl,
         status: 'pending',
         createdBy: body.userId,
+        fechaEmision: jsonObject.fechaEmision
+          ? parseFechaEmision(jsonObject.fechaEmision)
+          : undefined,
       })
 
       const project = await this.projectService.findOne2(body.proyectId)
@@ -95,9 +97,7 @@ export class ExpenseService {
 
           if (creatorId) {
             try {
-              const creator = await this.usersService.findOne(
-                creatorId
-              )
+              const creator = await this.usersService.findOne(creatorId)
               if (creator) {
                 creatorName =
                   creator.firstName && creator.lastName
@@ -117,8 +117,9 @@ export class ExpenseService {
                 admin.email,
                 {
                   providerName: creatorName,
-                  invoiceNumber: `${jsonObject.serie || ''}-${jsonObject.correlativo || ''
-                    }`,
+                  invoiceNumber: `${jsonObject.serie || ''}-${
+                    jsonObject.correlativo || ''
+                  }`,
                   date:
                     jsonObject.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -140,9 +141,7 @@ export class ExpenseService {
 
           if (body.userId) {
             try {
-              const creator = await this.usersService.findOne(
-                body.userId
-              )
+              const creator = await this.usersService.findOne(body.userId)
               if (creator && creator.email) {
                 const creatorFullName =
                   creator.firstName && creator.lastName
@@ -153,8 +152,9 @@ export class ExpenseService {
                   creator.email,
                   {
                     providerName: creatorFullName,
-                    invoiceNumber: `${jsonObject.serie || ''}-${jsonObject.correlativo || ''
-                      }`,
+                    invoiceNumber: `${jsonObject.serie || ''}-${
+                      jsonObject.correlativo || ''
+                    }`,
                     date:
                       jsonObject.fechaEmision ||
                       new Date().toISOString().split('T')[0],
@@ -192,9 +192,7 @@ export class ExpenseService {
 
             if (creatorId) {
               try {
-                const creator = await this.usersService.findOne(
-                  creatorId
-                )
+                const creator = await this.usersService.findOne(creatorId)
                 if (creator) {
                   creatorName =
                     creator.firstName && creator.lastName
@@ -215,8 +213,9 @@ export class ExpenseService {
                     colaborador.email,
                     {
                       providerName: creatorName,
-                      invoiceNumber: `${jsonObject.serie || ''}-${jsonObject.correlativo || ''
-                        }`,
+                      invoiceNumber: `${jsonObject.serie || ''}-${
+                        jsonObject.correlativo || ''
+                      }`,
                       date:
                         jsonObject.fechaEmision ||
                         new Date().toISOString().split('T')[0],
@@ -271,23 +270,44 @@ export class ExpenseService {
     createExpenseDto: CreateExpenseDto,
     companyId: string
   ): Promise<Expense> {
-
-    const companyIdObject = new Types.ObjectId(companyId)
-
-    return this.expenseRepository.create({
+    let fechaEmisionDate: Date | undefined = undefined
+    if ('fechaEmision' in createExpenseDto && createExpenseDto.fechaEmision) {
+      fechaEmisionDate = new Date(createExpenseDto.fechaEmision as any)
+    } else if ((createExpenseDto as any).data) {
+      let dataObj: any = (createExpenseDto as any).data
+      if (typeof dataObj === 'string') {
+        try {
+          dataObj = JSON.parse(dataObj)
+        } catch {}
+      }
+      if (dataObj && dataObj.fechaEmision) {
+        fechaEmisionDate = parseFechaEmision(dataObj.fechaEmision)
+      }
+    }
+    const createdExpense = new this.expenseRepository({
       ...createExpenseDto,
-      companyId: companyIdObject,
-      status: 'pending',
+      companyId,
+      fechaEmision: fechaEmisionDate,
     })
+    return createdExpense.save()
   }
 
-  async findAll(companyId: string): Promise<Expense[]> {
-    const companyIdObject = new Types.ObjectId(companyId)
-    return this.expenseRepository
-      .find({ companyId: companyIdObject })
-      .populate('proyectId')
-      .populate('categoryId')
-      .exec()
+  async findAll(companyId: string, filters: any = {}): Promise<Expense[]> {
+    const query: any = { companyId }
+    if (filters.projectId) query.proyectId = filters.projectId
+    if (filters.categoryId) query.categoryId = filters.categoryId
+    if (filters.status) query.status = filters.status
+    if (filters.dateFrom || filters.dateTo) {
+      query.fechaEmision = {}
+      if (filters.dateFrom) query.fechaEmision.$gte = new Date(filters.dateFrom)
+      if (filters.dateTo) query.fechaEmision.$lte = new Date(filters.dateTo)
+    }
+    if (filters.amountMin || filters.amountMax) {
+      query.total = {}
+      if (filters.amountMin) query.total.$gte = Number(filters.amountMin)
+      if (filters.amountMax) query.total.$lte = Number(filters.amountMax)
+    }
+    return this.expenseRepository.find(query).exec()
   }
 
   async findOne(id: string, companyId: string): Promise<Expense> {
@@ -310,11 +330,14 @@ export class ExpenseService {
       if (!expense) {
         throw new NotFoundException(`Gasto con ID ${id} no encontrado`)
       }
-
     }
 
     return this.expenseRepository
-      .findOneAndUpdate({ _id: id, companyId: companyIdObject }, updateExpenseDto, { new: true })
+      .findOneAndUpdate(
+        { _id: id, companyId: companyIdObject },
+        updateExpenseDto,
+        { new: true }
+      )
       .populate('companyId')
       .populate('categoryId')
       .exec()
@@ -392,9 +415,7 @@ export class ExpenseService {
         )
       } else if (validUserId) {
         try {
-          const approver = await this.usersService.findOne(
-            validUserId
-          )
+          const approver = await this.usersService.findOne(validUserId)
           if (approver) {
             approverName =
               approver.firstName && approver.lastName
@@ -423,9 +444,7 @@ export class ExpenseService {
             return updatedExpense
           }
 
-          const creator = await this.usersService.findOne(
-            expense.createdBy
-          )
+          const creator = await this.usersService.findOne(expense.createdBy)
 
           if (creator && creator.email) {
             const creatorFullName =
@@ -442,8 +461,9 @@ export class ExpenseService {
                 creator.email,
                 {
                   providerName: creatorFullName,
-                  invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
-                    }`,
+                  invoiceNumber: `${invoiceData.serie || ''}-${
+                    invoiceData.correlativo || ''
+                  }`,
                   date:
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -459,8 +479,9 @@ export class ExpenseService {
                 creator.email,
                 {
                   providerName: creatorFullName,
-                  invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
-                    }`,
+                  invoiceNumber: `${invoiceData.serie || ''}-${
+                    invoiceData.correlativo || ''
+                  }`,
                   date:
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -509,8 +530,9 @@ export class ExpenseService {
                       colaborador.firstName && colaborador.lastName
                         ? `${colaborador.firstName} ${colaborador.lastName}`
                         : colaborador.email,
-                    invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
-                      }`,
+                    invoiceNumber: `${invoiceData.serie || ''}-${
+                      invoiceData.correlativo || ''
+                    }`,
                     date:
                       invoiceData.fechaEmision ||
                       new Date().toISOString().split('T')[0],
@@ -623,9 +645,7 @@ export class ExpenseService {
         )
       } else if (validUserId) {
         try {
-          const rejector = await this.usersService.findOne(
-            validUserId
-          )
+          const rejector = await this.usersService.findOne(validUserId)
           if (rejector) {
             rejectorName =
               rejector.firstName && rejector.lastName
@@ -656,9 +676,7 @@ export class ExpenseService {
             return updatedExpense
           }
 
-          const creator = await this.usersService.findOne(
-            expense.createdBy
-          )
+          const creator = await this.usersService.findOne(expense.createdBy)
 
           if (creator && creator.email) {
             const creatorFullName =
@@ -675,8 +693,9 @@ export class ExpenseService {
                 creator.email,
                 {
                   providerName: creatorFullName,
-                  invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
-                    }`,
+                  invoiceNumber: `${invoiceData.serie || ''}-${
+                    invoiceData.correlativo || ''
+                  }`,
                   date:
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -693,8 +712,9 @@ export class ExpenseService {
                 creator.email,
                 {
                   providerName: creatorFullName,
-                  invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
-                    }`,
+                  invoiceNumber: `${invoiceData.serie || ''}-${
+                    invoiceData.correlativo || ''
+                  }`,
                   date:
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
@@ -744,8 +764,9 @@ export class ExpenseService {
                       colaborador.firstName && colaborador.lastName
                         ? `${colaborador.firstName} ${colaborador.lastName}`
                         : colaborador.email,
-                    invoiceNumber: `${invoiceData.serie || ''}-${invoiceData.correlativo || ''
-                      }`,
+                    invoiceNumber: `${invoiceData.serie || ''}-${
+                      invoiceData.correlativo || ''
+                    }`,
                     date:
                       invoiceData.fechaEmision ||
                       new Date().toISOString().split('T')[0],
@@ -785,6 +806,16 @@ export class ExpenseService {
 
   async remove(id: string, companyId: string): Promise<void> {
     const companyIdObject = new Types.ObjectId(companyId)
-    await this.expenseRepository.findOneAndDelete({ _id: id, companyId: companyIdObject }).exec()
+    await this.expenseRepository
+      .findOneAndDelete({ _id: id, companyId: companyIdObject })
+      .exec()
   }
+}
+
+function parseFechaEmision(fecha: string): Date | undefined {
+  const parts = fecha.split(/[\/\-]/)
+  if (parts.length === 3) {
+    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
+  }
+  return undefined
 }

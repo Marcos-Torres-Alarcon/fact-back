@@ -67,16 +67,51 @@ export class InvoiceService {
     createInvoiceDto: CreateInvoiceDto,
     companyId: string
   ): Promise<Invoice> {
+    // Extraer fecha de emisión como Date
+    let fechaEmisionDate: Date | undefined = undefined
+    if ('fechaEmision' in createInvoiceDto && createInvoiceDto.fechaEmision) {
+      fechaEmisionDate = new Date(createInvoiceDto.fechaEmision as any)
+    } else if ((createInvoiceDto as any).data) {
+      // Si viene en data como string ("DD/MM/YYYY" o "DD-MM-YYYY")
+      let dataObj: any = (createInvoiceDto as any).data
+      if (typeof dataObj === 'string') {
+        try {
+          dataObj = JSON.parse(dataObj)
+        } catch {}
+      }
+      if (dataObj && dataObj.fechaEmision) {
+        const parts = dataObj.fechaEmision.split(/[\/\-]/)
+        if (parts.length === 3) {
+          // DD/MM/YYYY o DD-MM-YYYY
+          fechaEmisionDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
+        }
+      }
+    }
     const createdInvoice = new this.invoiceModel({
       ...createInvoiceDto,
       companyId,
       status: 'PENDING',
+      fechaEmision: fechaEmisionDate,
     })
     return createdInvoice.save()
   }
 
-  async findAll(companyId: string): Promise<Invoice[]> {
-    return this.invoiceModel.find({ companyId }).populate('companyId').exec()
+  async findAll(companyId: string, filters: any = {}): Promise<Invoice[]> {
+    const query: any = { companyId }
+    if (filters.projectId) query.projectId = filters.projectId
+    if (filters.categoryId) query.categoryId = filters.categoryId
+    if (filters.status) query.status = filters.status
+    if (filters.dateFrom || filters.dateTo) {
+      query.fechaEmision = {}
+      if (filters.dateFrom) query.fechaEmision.$gte = new Date(filters.dateFrom)
+      if (filters.dateTo) query.fechaEmision.$lte = new Date(filters.dateTo)
+    }
+    if (filters.amountMin || filters.amountMax) {
+      query.montoTotal = {}
+      if (filters.amountMin) query.montoTotal.$gte = Number(filters.amountMin)
+      if (filters.amountMax) query.montoTotal.$lte = Number(filters.amountMax)
+    }
+    return this.invoiceModel.find(query).populate('companyId').exec()
   }
 
   async findOne(id: string, companyId: string): Promise<Invoice> {
@@ -207,7 +242,9 @@ export class InvoiceService {
             invoiceNumber:
               `${updatedInvoice.serie}-${updatedInvoice.correlativo}` ||
               'Número no especificado',
-            date: updatedInvoice.fechaEmision || new Date().toISOString(),
+            date: updatedInvoice.fechaEmision
+              ? new Date(updatedInvoice.fechaEmision).toISOString()
+              : new Date().toISOString(),
             type: updatedInvoice.tipoComprobante || 'Factura',
             status:
               status === InvoiceStatus.APPROVED
@@ -883,7 +920,9 @@ export class InvoiceService {
             {
               providerName: invoice.rucEmisor,
               invoiceNumber: `${invoice.serie}-${invoice.correlativo}`,
-              date: invoice.fechaEmision,
+              date: invoice.fechaEmision
+                ? new Date(invoice.fechaEmision).toISOString()
+                : '',
               type: invoice.tipoComprobante,
               rejectionReason,
             }
@@ -967,7 +1006,9 @@ export class InvoiceService {
             {
               providerName: updatedInvoice.rucEmisor,
               invoiceNumber: `${updatedInvoice.serie}-${updatedInvoice.correlativo}`,
-              date: updatedInvoice.fechaEmision,
+              date: updatedInvoice.fechaEmision
+                ? new Date(updatedInvoice.fechaEmision).toISOString()
+                : '',
               type: updatedInvoice.tipoComprobante,
               status: status,
               rejectionReason:

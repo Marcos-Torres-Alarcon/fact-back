@@ -42,6 +42,9 @@ export class Invoice extends Document {
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'Company' })
   companyId: Types.ObjectId
+
+  @Prop({ required: false, type: Date })
+  fechaEmision?: Date
 }
 
 export const InvoiceSchema = SchemaFactory.createForClass(Invoice)

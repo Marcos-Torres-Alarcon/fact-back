@@ -26,7 +26,7 @@ import { UserRole } from '../auth/enums/user-role.enum'
 @Controller('project-types')
 @ApiBearerAuth()
 export class ProjectTypeController {
-  constructor(private readonly projectTypeService: ProjectTypeService) { }
+  constructor(private readonly projectTypeService: ProjectTypeService) {}
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
