@@ -48,7 +48,7 @@ export class AuthService {
     private userModel: Model<UserDocument>,
     @InjectModel(Provider.name)
     private providerModel: Model<ProviderDocument>
-  ) { }
+  ) {}
 
   async register(
     registerDto: RegisterDto
@@ -88,29 +88,28 @@ export class AuthService {
   }
 
   async login(userData: LoginDto) {
-
-    const user = await this.validateUser(userData.email, userData.password);
+    const user = await this.validateUser(userData.email, userData.password)
     if (!user) {
-      throw new BadRequestException('Credenciales inválidas');
+      throw new BadRequestException('Credenciales inválidas')
     }
     const payload = {
       email: user.email,
       userId: user._id.toString(),
-      roles: [user.role]
+      roles: [user.role],
     }
     return {
       access_token: this.jwtService.sign(payload),
       ...user,
-    };
+    }
   }
 
   async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.usersService.findByEmail(email);
-    if (user && await bcrypt.compare(password, user.password)) {
-      const { password, ...result } = user;
-      return result;
+    const user = await this.usersService.findByEmail(email)
+    if (user && (await bcrypt.compare(password, user.password))) {
+      const { password, ...result } = user
+      return result
     }
-    return null;
+    return null
   }
 
   // async login(loginDto: LoginDto): Promise<{

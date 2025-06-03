@@ -28,7 +28,7 @@ export class ExpenseController {
 
   @Post('analyze-image')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
+  // @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR, UserRole.PROVIDER)
   analyzeImage(@Body() body: CreateExpenseDto, @Request() req) {
     // Debug: ver qué contiene req.user
     this.logger.debug('req.user:', JSON.stringify(req.user, null, 2))
@@ -67,7 +67,12 @@ export class ExpenseController {
 
   @Patch(':id/:companyId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.COLABORADOR,
+    UserRole.PROVIDER
+  )
   update(
     @Param('id') id: string,
     @Param('companyId') companyId: string,
@@ -136,7 +141,12 @@ export class ExpenseController {
 
   @Delete(':id/:companyId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.COLABORADOR,
+    UserRole.PROVIDER
+  )
   remove(@Param('id') id: string, @Param('companyId') companyId: string) {
     return this.expenseService.remove(id, companyId)
   }
