@@ -307,7 +307,11 @@ export class ExpenseService {
       if (filters.amountMin) query.total.$gte = Number(filters.amountMin)
       if (filters.amountMax) query.total.$lte = Number(filters.amountMax)
     }
-    return this.expenseRepository.find(query).exec()
+    return this.expenseRepository
+      .find(query)
+      .populate('proyectId')
+      .populate('categoryId')
+      .exec()
   }
 
   async findOne(id: string, companyId: string): Promise<Expense> {

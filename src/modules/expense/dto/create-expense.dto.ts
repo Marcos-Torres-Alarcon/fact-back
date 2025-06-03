@@ -2,7 +2,6 @@ import { IsString, IsOptional, IsNotEmpty, IsEnum } from 'class-validator'
 import { ExpenseStatus } from '../entities/expense.entity'
 
 export class CreateExpenseDto {
-
   @IsString()
   @IsNotEmpty()
   proyectId: string
@@ -19,7 +18,6 @@ export class CreateExpenseDto {
   @IsOptional()
   data?: string
 
-
   @IsOptional()
   total?: number
 
@@ -30,7 +28,6 @@ export class CreateExpenseDto {
   @IsString()
   @IsOptional()
   userId?: string
-
 
   @IsString()
   @IsNotEmpty()

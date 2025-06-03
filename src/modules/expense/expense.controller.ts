@@ -53,7 +53,7 @@ export class ExpenseController {
 
   @Patch(':id/:companyId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
   update(
     @Param('id') id: string,
     @Param('companyId') companyId: string,
@@ -122,7 +122,7 @@ export class ExpenseController {
 
   @Delete(':id/:companyId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
   remove(@Param('id') id: string, @Param('companyId') companyId: string) {
     return this.expenseService.remove(id, companyId)
   }
