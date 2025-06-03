@@ -34,13 +34,11 @@ export class ExpenseController {
     this.logger.debug('req.user:', JSON.stringify(req.user, null, 2))
     this.logger.debug('body.companyId:', body.companyId)
 
-    // Usar el companyId del body si está disponible, sino intentar del token
     const companyId = body.companyId || req.user?.companyId
     if (!companyId) {
       throw new Error('No se pudo obtener la empresa del usuario ni del body')
     }
 
-    // Asegurar que el body tenga el companyId y userId correctos
     body.companyId = companyId
     body.userId = req.user?.sub || req.user?._id || body.userId
 
@@ -56,7 +54,15 @@ export class ExpenseController {
   }
 
   @Get(':companyId')
-  findAll(@Param('companyId') companyId: string, @Query() query: any) {
+  findAll(
+    @Param('companyId') companyId: string,
+    @Query() query: any,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc'
+  ) {
+    if (sortBy) query.sortBy = sortBy
+    if (sortOrder) query.sortOrder = sortOrder
+
     return this.expenseService.findAll(companyId, query)
   }
 

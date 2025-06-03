@@ -351,10 +351,28 @@ export class ExpenseService {
       return expense ? [expense] : []
     }
 
+    const sortBy = filters.sortBy || 'fechaEmision'
+    const sortOrder = filters.sortOrder || 'desc'
+
+    let sortField = sortBy
+    if (sortBy === 'fechaEmision') {
+      sortField = 'fechaEmision'
+    } else if (sortBy === 'createdAt') {
+      sortField = 'createdAt'
+    }
+
+    const sortOptions: any = {}
+    sortOptions[sortField] = sortOrder === 'desc' ? -1 : 1
+
+    if (sortBy === 'fechaEmision') {
+      sortOptions['createdAt'] = sortOrder === 'desc' ? -1 : 1
+    }
+
     return this.expenseRepository
       .find(query)
       .populate('proyectId')
       .populate('categoryId')
+      .sort(sortOptions)
       .exec()
   }
 
