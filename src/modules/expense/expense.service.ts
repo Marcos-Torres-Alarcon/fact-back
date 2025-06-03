@@ -68,6 +68,36 @@ export class ExpenseService {
         .trim()
       const jsonObject = JSON.parse(jsonStringLimpio)
 
+      if (jsonObject.serie && jsonObject.correlativo) {
+        this.logger.debug(
+          `Validando duplicados para serie: ${jsonObject.serie}, correlativo: ${jsonObject.correlativo}, companyId: ${body.companyId}`
+        )
+
+        const existingInvoice = await this.findBySeriAndCorrelativo(
+          jsonObject.serie,
+          jsonObject.correlativo,
+          body.companyId
+        )
+
+        this.logger.debug(
+          `Resultado de búsqueda de duplicados: ${existingInvoice ? 'ENCONTRADO' : 'NO ENCONTRADO'}`
+        )
+
+        if (existingInvoice) {
+          this.logger.warn(
+            `Factura duplicada detectada: ${jsonObject.serie}-${jsonObject.correlativo}`
+          )
+          throw new HttpException(
+            `Ya existe una factura/boleta con el número ${jsonObject.serie}-${jsonObject.correlativo}`,
+            HttpStatus.CONFLICT
+          )
+        }
+      } else {
+        this.logger.warn(
+          `No se pudieron extraer serie y/o correlativo. Serie: ${jsonObject.serie}, Correlativo: ${jsonObject.correlativo}`
+        )
+      }
+
       const categoryObject = Types.ObjectId.createFromHexString(body.categoryId)
       const projectObject = Types.ObjectId.createFromHexString(body.proyectId)
 
@@ -258,6 +288,10 @@ export class ExpenseService {
 
       return expense
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error
+      }
+
       this.logger.error('OpenAI API Error Response:', error)
       throw new HttpException(
         'Error al analizar la imagen desde la URL con OpenAI.',
@@ -307,6 +341,16 @@ export class ExpenseService {
       if (filters.amountMin) query.total.$gte = Number(filters.amountMin)
       if (filters.amountMax) query.total.$lte = Number(filters.amountMax)
     }
+
+    if (filters.serie && filters.correlativo) {
+      const expense = await this.findBySeriAndCorrelativo(
+        filters.serie,
+        filters.correlativo,
+        companyId
+      )
+      return expense ? [expense] : []
+    }
+
     return this.expenseRepository
       .find(query)
       .populate('proyectId')
@@ -813,6 +857,72 @@ export class ExpenseService {
     await this.expenseRepository
       .findOneAndDelete({ _id: id, companyId: companyIdObject })
       .exec()
+  }
+
+  async findBySeriAndCorrelativo(
+    serie: string,
+    correlativo: string,
+    companyId?: string
+  ): Promise<Expense | null> {
+    try {
+      this.logger.debug(
+        `Buscando duplicados - Serie: ${serie}, Correlativo: ${correlativo}, CompanyId: ${companyId}`
+      )
+
+      const query: any = {}
+
+      if (companyId) {
+        query.companyId = companyId
+      }
+
+      this.logger.debug(`Query de búsqueda: ${JSON.stringify(query)}`)
+
+      const expenses = await this.expenseRepository.find(query).exec()
+
+      this.logger.debug(`Encontradas ${expenses.length} facturas para revisar`)
+
+      for (const expense of expenses) {
+        if (expense.data) {
+          try {
+            let dataObj: any = expense.data
+            if (typeof dataObj === 'string') {
+              dataObj = JSON.parse(dataObj)
+            }
+
+            this.logger.debug(
+              `Revisando factura ${expense._id}: Serie: ${dataObj?.serie}, Correlativo: ${dataObj?.correlativo}`
+            )
+
+            if (
+              dataObj &&
+              dataObj.serie === serie &&
+              dataObj.correlativo === correlativo
+            ) {
+              this.logger.debug(`DUPLICADO ENCONTRADO: Factura ${expense._id}`)
+              return expense
+            }
+          } catch (error) {
+            this.logger.warn(
+              `Error parseando data de factura ${expense._id}:`,
+              error
+            )
+            continue
+          }
+        }
+      }
+
+      this.logger.debug(`No se encontraron duplicados`)
+      return null
+    } catch (error) {
+      this.logger.error(
+        'Error al buscar factura por serie y correlativo:',
+        error
+      )
+      throw new HttpException(
+        'Error al validar duplicados',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
   }
 }
 

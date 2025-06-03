@@ -29,7 +29,21 @@ export class ExpenseController {
   @Post('analyze-image')
   @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COLABORADOR)
-  analyzeImage(@Body() body: CreateExpenseDto) {
+  analyzeImage(@Body() body: CreateExpenseDto, @Request() req) {
+    // Debug: ver qué contiene req.user
+    this.logger.debug('req.user:', JSON.stringify(req.user, null, 2))
+    this.logger.debug('body.companyId:', body.companyId)
+
+    // Usar el companyId del body si está disponible, sino intentar del token
+    const companyId = body.companyId || req.user?.companyId
+    if (!companyId) {
+      throw new Error('No se pudo obtener la empresa del usuario ni del body')
+    }
+
+    // Asegurar que el body tenga el companyId y userId correctos
+    body.companyId = companyId
+    body.userId = req.user?.sub || req.user?._id || body.userId
+
     return this.expenseService.analyzeImageWithUrl(body)
   }
 
