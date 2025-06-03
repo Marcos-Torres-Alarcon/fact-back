@@ -6,12 +6,14 @@ export interface CategoryDocument extends Document {
   key: string
   description?: string
   isActive: boolean
+  companyId: Types.ObjectId
   createdAt: Date
   updatedAt: Date
 }
 
 export interface GetCategoryDocument extends CategoryDocument {
   _id: string
+  companyId: Types.ObjectId
 }
 
 @Schema({ timestamps: true })

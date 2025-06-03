@@ -12,7 +12,7 @@ export class CategoryService {
   constructor(
     @InjectModel(Category.name)
     private categoryModel: Model<CategoryDocument>
-  ) { }
+  ) {}
 
   async create(
     createCategoryDto: CreateCategoryDto
@@ -23,7 +23,10 @@ export class CategoryService {
         createCategoryDto.key = this.generateKey(createCategoryDto.name)
       }
 
-      const newCategory = new this.categoryModel({ ...createCategoryDto, companyId: companyIdObject })
+      const newCategory = new this.categoryModel({
+        ...createCategoryDto,
+        companyId: companyIdObject,
+      })
       return await newCategory.save()
     } catch (error) {
       this.logger.error(
@@ -37,7 +40,9 @@ export class CategoryService {
   async findAll(companyId: string): Promise<CategoryDocument[]> {
     const companyIdObject = new Types.ObjectId(companyId)
     try {
-      return await this.categoryModel.find({ companyId: companyIdObject }).populate('companyId').exec()
+      return await this.categoryModel
+        .find({ companyId: companyIdObject })
+        .exec()
     } catch (error) {
       this.logger.error(
         `Error al obtener categorías: ${error.message}`,
@@ -52,7 +57,6 @@ export class CategoryService {
     try {
       const category = await this.categoryModel
         .findOne({ _id: id, companyId: companyIdObject })
-        .populate('companyId')
         .exec()
       if (!category) {
         throw new NotFoundException(`Categoría con ID ${id} no encontrada`)
@@ -72,7 +76,6 @@ export class CategoryService {
     try {
       const category = await this.categoryModel
         .findOne({ key, companyId: companyIdObject })
-        .populate('companyId')
         .exec()
       if (!category) {
         throw new NotFoundException(`Categoría con clave ${key} no encontrada`)
@@ -103,9 +106,13 @@ export class CategoryService {
       }
 
       const updatedCategory = await this.categoryModel
-        .findOneAndUpdate({ _id: id, companyId: companyIdObject }, updateCategoryDto, {
-          new: true,
-        })
+        .findOneAndUpdate(
+          { _id: id, companyId: companyIdObject },
+          updateCategoryDto,
+          {
+            new: true,
+          }
+        )
         .exec()
 
       if (!updatedCategory) {

@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import {
   CreateProjectDto,
   ProjectStatus,
@@ -19,7 +16,7 @@ import { UpdateProjectDto } from './dto/update-project.dto'
 export class ProjectService {
   constructor(
     @InjectModel(Project.name) private projectModel: Model<Project>
-  ) { }
+  ) {}
 
   async create(
     createProjectDto: CreateProjectDto,
@@ -42,7 +39,6 @@ export class ProjectService {
     const companyIdObject = new Types.ObjectId(companyId)
     return this.projectModel
       .find({ companyId: companyIdObject })
-      .populate('companyId')
       .populate('providerId', 'firstName lastName')
       .exec()
   }
@@ -94,7 +90,10 @@ export class ProjectService {
     return projects
   }
 
-  async findByStatus(status: ProjectStatus, companyId: string): Promise<Project[]> {
+  async findByStatus(
+    status: ProjectStatus,
+    companyId: string
+  ): Promise<Project[]> {
     const companyIdObject = new Types.ObjectId(companyId)
     return this.projectModel
       .find({ status, companyId: companyIdObject })
@@ -103,7 +102,10 @@ export class ProjectService {
       .exec()
   }
 
-  async findByAssignedUser(userId: string, companyId: string): Promise<Project[]> {
+  async findByAssignedUser(
+    userId: string,
+    companyId: string
+  ): Promise<Project[]> {
     const companyIdObject = new Types.ObjectId(companyId)
     return this.projectModel
       .find({ assignedUsers: userId, companyId: companyIdObject })
@@ -117,7 +119,7 @@ export class ProjectService {
     const projects = await this.projectModel
       .find({
         $or: [{ assignedTo: userId }, { teamMembers: userId }],
-        companyId: companyIdObject
+        companyId: companyIdObject,
       })
       .populate('clientId')
       .populate('assignedTo')
@@ -137,7 +139,7 @@ export class ProjectService {
   //   user: IUser
   // ): Promise<Project> {
   //   const project = await this.projectModel
-  //     .findOne({ _id: id, companyId: user.companyId })  
+  //     .findOne({ _id: id, companyId: user.companyId })
   //     .exec()
   //   if (!project) {
   //     throw new NotFoundException('Proyecto no encontrado')
@@ -182,7 +184,9 @@ export class ProjectService {
     id: string,
     updateProjectDto: UpdateProjectDto
   ): Promise<Project> {
-    return this.projectModel.findByIdAndUpdate(id, updateProjectDto, { new: true })
+    return this.projectModel.findByIdAndUpdate(id, updateProjectDto, {
+      new: true,
+    })
   }
 
   async updateWorkStatus(
@@ -255,9 +259,7 @@ export class ProjectService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.projectModel
-      .findOneAndDelete({ _id: id })
-      .exec()
+    const result = await this.projectModel.findOneAndDelete({ _id: id }).exec()
     if (!result) {
       throw new NotFoundException('Proyecto no encontrado')
     }
