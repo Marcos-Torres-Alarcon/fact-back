@@ -328,13 +328,74 @@ export class ExpenseService {
 
   async findAll(companyId: string, filters: any = {}): Promise<Expense[]> {
     const query: any = { companyId }
-    if (filters.projectId) query.proyectId = filters.projectId
-    if (filters.categoryId) query.categoryId = filters.categoryId
+
+    const isValidObjectId = (id: string): boolean => {
+      return /^[0-9a-fA-F]{24}$/.test(id)
+    }
+
+    if (filters.projectId) {
+      if (isValidObjectId(filters.projectId)) {
+        query.$or = [
+          { proyectId: filters.projectId },
+          { proyectId: Types.ObjectId.createFromHexString(filters.projectId) },
+        ]
+      }
+    }
+
+    if (filters.proyectId) {
+      if (isValidObjectId(filters.proyectId)) {
+        query.$or = [
+          { proyectId: filters.proyectId },
+          { proyectId: Types.ObjectId.createFromHexString(filters.proyectId) },
+        ]
+      }
+    }
+
+    if (filters.categoryId) {
+      if (isValidObjectId(filters.categoryId)) {
+        if (query.$or) {
+          const projectConditions = query.$or
+          delete query.$or
+          query.$and = [
+            { $or: projectConditions },
+            {
+              $or: [
+                { categoryId: filters.categoryId },
+                {
+                  categoryId: Types.ObjectId.createFromHexString(
+                    filters.categoryId
+                  ),
+                },
+              ],
+            },
+          ]
+        } else {
+          query.$or = [
+            { categoryId: filters.categoryId },
+            {
+              categoryId: Types.ObjectId.createFromHexString(
+                filters.categoryId
+              ),
+            },
+          ]
+        }
+      }
+    }
+
     if (filters.status) query.status = filters.status
+
     if (filters.dateFrom || filters.dateTo) {
       query.fechaEmision = {}
-      if (filters.dateFrom) query.fechaEmision.$gte = new Date(filters.dateFrom)
-      if (filters.dateTo) query.fechaEmision.$lte = new Date(filters.dateTo)
+      if (filters.dateFrom) {
+        const dateFrom = new Date(filters.dateFrom)
+        dateFrom.setUTCHours(0, 0, 0, 0)
+        query.fechaEmision.$gte = dateFrom
+      }
+      if (filters.dateTo) {
+        const dateTo = new Date(filters.dateTo)
+        dateTo.setUTCHours(23, 59, 59, 999)
+        query.fechaEmision.$lte = dateTo
+      }
     }
     if (filters.amountMin || filters.amountMax) {
       query.total = {}
@@ -368,16 +429,18 @@ export class ExpenseService {
       sortOptions['createdAt'] = sortOrder === 'desc' ? -1 : 1
     }
 
-    return this.expenseRepository
+    const result = await this.expenseRepository
       .find(query)
       .populate('proyectId')
       .populate('categoryId')
       .sort(sortOptions)
       .exec()
+
+    return result
   }
 
   async findOne(id: string, companyId: string): Promise<Expense> {
-    const companyIdObject = new Types.ObjectId(companyId)
+    const companyIdObject = Types.ObjectId.createFromHexString(companyId)
     return this.expenseRepository
       .findOne({ _id: id, companyId: companyIdObject })
       .populate('proyectId')
@@ -390,7 +453,7 @@ export class ExpenseService {
     updateExpenseDto: UpdateExpenseDto,
     companyId: string
   ): Promise<Expense> {
-    const companyIdObject = new Types.ObjectId(companyId)
+    const companyIdObject = Types.ObjectId.createFromHexString(companyId)
     if (updateExpenseDto.categoryId) {
       const expense = await this.findOne(id, companyId)
       if (!expense) {
@@ -871,7 +934,7 @@ export class ExpenseService {
   }
 
   async remove(id: string, companyId: string): Promise<void> {
-    const companyIdObject = new Types.ObjectId(companyId)
+    const companyIdObject = Types.ObjectId.createFromHexString(companyId)
     await this.expenseRepository
       .findOneAndDelete({ _id: id, companyId: companyIdObject })
       .exec()
