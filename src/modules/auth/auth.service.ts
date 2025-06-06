@@ -92,13 +92,9 @@ export class AuthService {
     if (!user) {
       throw new BadRequestException('Credenciales inválidas')
     }
-    const payload = {
-      email: user.email,
-      userId: user._id.toString(),
-      roles: [user.role],
-    }
+    const token = this.generateToken(user)
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: token,
       ...user,
     }
   }

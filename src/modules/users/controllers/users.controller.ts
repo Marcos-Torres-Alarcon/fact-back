@@ -21,10 +21,11 @@ import { UsersService } from '../services/users.service'
 import { CreateUserDto } from '../dto/create-user.dto'
 
 @Controller('users')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
   private readonly logger = new Logger(UsersController.name)
 
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.COMPANY, UserRole.ADMIN2)
@@ -107,7 +108,43 @@ export class UsersController {
 
       this.logger.log(`Headers de la solicitud: ${JSON.stringify(req.headers)}`)
 
-      const companyId = req.user.companyId
+      let companyId = req.user.companyId
+      this.logger.log(`CompanyId del token JWT: ${companyId}`)
+      this.logger.log(`Rol del usuario: ${req.user.role}`)
+
+      if (!companyId) {
+        this.logger.log('Token sin companyId, obteniendo de la base de datos')
+        this.logger.log(
+          `Datos completos del usuario del token: ${JSON.stringify(req.user)}`
+        )
+
+        try {
+          const currentUser = await this.usersService.findByEmail(
+            req.user.email
+          )
+          companyId = currentUser.companyId
+          this.logger.log(
+            `CompanyId obtenido de la base de datos por email: ${companyId}`
+          )
+        } catch (error) {
+          this.logger.error(
+            `Error al buscar usuario por email: ${error.message}`
+          )
+          throw new HttpException(
+            'No se pudo obtener la información de la compañía del usuario',
+            HttpStatus.INTERNAL_SERVER_ERROR
+          )
+        }
+      }
+
+      if (!companyId) {
+        this.logger.warn('Usuario no tiene companyId asignado')
+        throw new HttpException(
+          'Usuario sin compañía asignada',
+          HttpStatus.BAD_REQUEST
+        )
+      }
+
       const users = await this.usersService.findAll(companyId)
       this.logger.log(`Se encontraron ${users.length} usuarios`)
       return users

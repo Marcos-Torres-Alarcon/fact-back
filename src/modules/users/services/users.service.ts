@@ -23,7 +23,7 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService
-  ) { }
+  ) {}
 
   async create(
     createUserDto: CreateUserDto,
@@ -64,7 +64,6 @@ export class UsersService {
       const createdUser = new this.userModel(userData)
       const result = await createdUser.save()
 
-      // Si el usuario es un proveedor, enviar correo de bienvenida
       if (createUserDto.role === UserRole.PROVIDER) {
         try {
           const frontendUrl = this.configService.get<string>('FRONTEND_URL')
@@ -73,7 +72,7 @@ export class UsersService {
             {
               firstName: createUserDto.firstName,
               lastName: createUserDto.lastName,
-              password: createUserDto.password, // Enviamos la contraseña sin encriptar para el correo
+              password: createUserDto.password,
               loginUrl: `${frontendUrl}/auth/login`,
             }
           )
@@ -82,7 +81,6 @@ export class UsersService {
             `Error al enviar correo de bienvenida al proveedor: ${error.message}`,
             error.stack
           )
-          // No lanzamos el error para no interrumpir la creación del usuario
         }
       }
 
@@ -105,11 +103,20 @@ export class UsersService {
 
   async findAll(companyId: string): Promise<UserDocument[]> {
     try {
-      this.logger.log('Obteniendo todos los usuarios')
-      return await this.userModel
-        .find({ companyId })
-        .populate('companyId')
-        .exec()
+      this.logger.log(
+        `Obteniendo todos los usuarios para companyId: ${companyId}`
+      )
+
+      const totalUsers = await this.userModel.countDocuments().exec()
+      this.logger.log(`Total de usuarios en la base de datos: ${totalUsers}`)
+
+      const users = await this.userModel.find({ companyId }).exec()
+
+      this.logger.log(
+        `Usuarios encontrados para companyId ${companyId}: ${users.length}`
+      )
+
+      return users
     } catch (error) {
       this.logger.error(
         `Error al obtener usuarios: ${error.message}`,
@@ -119,13 +126,28 @@ export class UsersService {
     }
   }
 
+  async findAllUsers(): Promise<UserDocument[]> {
+    try {
+      this.logger.log('Obteniendo todos los usuarios sin filtro de companyId')
+
+      const users = await this.userModel.find({}).exec()
+
+      this.logger.log(`Total de usuarios encontrados: ${users.length}`)
+
+      return users
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener todos los usuarios: ${error.message}`,
+        error.stack
+      )
+      throw error
+    }
+  }
+
   async findOne(id: string): Promise<UserDocument> {
     try {
       this.logger.log(`Buscando usuario con ID: ${id}`)
-      const user = await this.userModel
-        .findOne({ _id: id })
-        .populate('companyId')
-        .exec()
+      const user = await this.userModel.findOne({ _id: id }).exec()
       if (!user) {
         this.logger.warn(`Usuario con ID ${id} no encontrado`)
         throw new NotFoundException(`Usuario con ID ${id} no encontrado`)
@@ -173,9 +195,7 @@ export class UsersService {
         )
       }
 
-      if (
-        updateUserDto.role === UserRole.COMPANY
-      ) {
+      if (updateUserDto.role === UserRole.COMPANY) {
         throw new ForbiddenException(
           'You can only update users from your company'
         )
@@ -191,7 +211,6 @@ export class UsersService {
           { $set: updateUserDto },
           { new: true }
         )
-        .populate('companyId')
         .exec()
 
       if (!updatedUser) {
