@@ -552,6 +552,29 @@ export class ExpenseService {
       )
       .exec()
 
+    setImmediate(() => {
+      this.sendApprovalEmails(
+        expense,
+        validUserId,
+        companyId,
+        userName,
+        userLastName
+      ).catch(error => {
+        this.logger.error('Error al enviar correos de aprobación:', error)
+      })
+    })
+
+    this.logger.log(`Factura ${id} aprobada exitosamente`)
+    return updatedExpense
+  }
+
+  private async sendApprovalEmails(
+    expense: any,
+    validUserId: string,
+    companyId: string,
+    userName?: string,
+    userLastName?: string
+  ) {
     try {
       let approverName = 'Administrador del Sistema'
 
@@ -588,7 +611,7 @@ export class ExpenseService {
         try {
           if (!/^[0-9a-fA-F]{24}$/.test(expense.createdBy)) {
             this.logger.warn(`ID del creador inválido: ${expense.createdBy}`)
-            return updatedExpense
+            return
           }
 
           const creator = await this.usersService.findOne(expense.createdBy)
@@ -712,8 +735,6 @@ export class ExpenseService {
     } catch (error) {
       this.logger.error('Error al enviar notificación de aprobación:', error)
     }
-
-    return updatedExpense
   }
 
   async rejectInvoice(id: string, approvalDto: ApprovalDto, companyId: string) {
@@ -782,6 +803,31 @@ export class ExpenseService {
       )
       .exec()
 
+    setImmediate(() => {
+      this.sendRejectionEmails(
+        expense,
+        validUserId,
+        companyId,
+        userName,
+        userLastName,
+        approvalDto.reason
+      ).catch(error => {
+        this.logger.error('Error al enviar correos de rechazo:', error)
+      })
+    })
+
+    this.logger.log(`Factura ${id} rechazada exitosamente`)
+    return updatedExpense
+  }
+
+  private async sendRejectionEmails(
+    expense: any,
+    validUserId: string,
+    companyId: string,
+    userName?: string,
+    userLastName?: string,
+    rejectionReason?: string
+  ) {
     try {
       let rejectorName = 'Administrador del Sistema'
 
@@ -820,7 +866,7 @@ export class ExpenseService {
         try {
           if (!/^[0-9a-fA-F]{24}$/.test(expense.createdBy)) {
             this.logger.warn(`ID del creador inválido: ${expense.createdBy}`)
-            return updatedExpense
+            return
           }
 
           const creator = await this.usersService.findOne(expense.createdBy)
@@ -847,7 +893,7 @@ export class ExpenseService {
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
                   type: invoiceData.tipoComprobante || 'Factura',
-                  rejectionReason: approvalDto.reason,
+                  rejectionReason: rejectionReason || 'No especificado',
                   rejectedBy: rejectorName,
                 }
               )
@@ -866,7 +912,7 @@ export class ExpenseService {
                     invoiceData.fechaEmision ||
                     new Date().toISOString().split('T')[0],
                   type: invoiceData.tipoComprobante || 'Factura',
-                  rejectionReason: approvalDto.reason,
+                  rejectionReason: rejectionReason || 'No especificado',
                   rejectedBy: rejectorName,
                 }
               )
@@ -918,7 +964,7 @@ export class ExpenseService {
                       invoiceData.fechaEmision ||
                       new Date().toISOString().split('T')[0],
                     type: invoiceData.tipoComprobante || 'Factura',
-                    rejectionReason: approvalDto.reason,
+                    rejectionReason: rejectionReason || 'No especificado',
                     rejectedBy: rejectorName,
                   }
                 )
@@ -947,8 +993,6 @@ export class ExpenseService {
     } catch (error) {
       this.logger.error('Error al enviar notificación de rechazo:', error)
     }
-
-    return updatedExpense
   }
 
   async remove(id: string, companyId: string): Promise<void> {
