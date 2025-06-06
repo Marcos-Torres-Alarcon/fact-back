@@ -440,9 +440,18 @@ export class ExpenseService {
   }
 
   async findOne(id: string, companyId: string): Promise<Expense> {
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new Error(`ID de expense inválido: ${id}`)
+    }
+    if (!/^[0-9a-fA-F]{24}$/.test(companyId)) {
+      throw new Error(`ID de company inválido: ${companyId}`)
+    }
+
     const companyIdObject = Types.ObjectId.createFromHexString(companyId)
+    const expenseIdObject = Types.ObjectId.createFromHexString(id)
+
     return this.expenseRepository
-      .findOne({ _id: id, companyId: companyIdObject })
+      .findOne({ _id: expenseIdObject, companyId: companyIdObject })
       .populate('proyectId')
       .populate('categoryId')
       .exec()
@@ -453,7 +462,16 @@ export class ExpenseService {
     updateExpenseDto: UpdateExpenseDto,
     companyId: string
   ): Promise<Expense> {
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new Error(`ID de expense inválido: ${id}`)
+    }
+    if (!/^[0-9a-fA-F]{24}$/.test(companyId)) {
+      throw new Error(`ID de company inválido: ${companyId}`)
+    }
+
     const companyIdObject = Types.ObjectId.createFromHexString(companyId)
+    const expenseIdObject = Types.ObjectId.createFromHexString(id)
+
     if (updateExpenseDto.categoryId) {
       const expense = await this.findOne(id, companyId)
       if (!expense) {
@@ -463,7 +481,7 @@ export class ExpenseService {
 
     return this.expenseRepository
       .findOneAndUpdate(
-        { _id: id, companyId: companyIdObject },
+        { _id: expenseIdObject, companyId: companyIdObject },
         updateExpenseDto,
         { new: true }
       )
@@ -934,9 +952,18 @@ export class ExpenseService {
   }
 
   async remove(id: string, companyId: string): Promise<void> {
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new Error(`ID de expense inválido: ${id}`)
+    }
+    if (!/^[0-9a-fA-F]{24}$/.test(companyId)) {
+      throw new Error(`ID de company inválido: ${companyId}`)
+    }
+
     const companyIdObject = Types.ObjectId.createFromHexString(companyId)
+    const expenseIdObject = Types.ObjectId.createFromHexString(id)
+
     await this.expenseRepository
-      .findOneAndDelete({ _id: id, companyId: companyIdObject })
+      .findOneAndDelete({ _id: expenseIdObject, companyId: companyIdObject })
       .exec()
   }
 

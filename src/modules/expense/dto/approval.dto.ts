@@ -13,12 +13,14 @@ export class ApprovalDto {
   status: ExpenseStatus
 
   @ApiProperty({
-    description: 'ID del usuario que realiza la acción',
+    description:
+      'ID del usuario que realiza la acción (obtenido automáticamente del JWT)',
     example: '123456',
+    required: false,
   })
   @IsString()
-  @IsNotEmpty()
-  userId: string
+  @IsOptional()
+  userId?: string
 
   @ApiProperty({
     description: 'Motivo del rechazo (requerido solo para rechazos)',

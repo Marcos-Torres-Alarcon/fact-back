@@ -92,6 +92,7 @@ export class ExpenseController {
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   approveInvoice(
     @Param('id') id: string,
+    @Param('companyId') companyId: string,
     @Body() approvalDto: ApprovalDto,
     @Request() req
   ) {
@@ -112,7 +113,7 @@ export class ExpenseController {
         `No se encontró ID de usuario en el JWT, se usará el proporcionado: ${approvalDto.userId || 'ninguno'}`
       )
     }
-    const companyId = req.user.companyId
+
     return this.expenseService.approveInvoice(id, approvalDto, companyId)
   }
 
@@ -121,6 +122,7 @@ export class ExpenseController {
   @Roles(UserRole.ADMIN, UserRole.ADMIN2)
   rejectInvoice(
     @Param('id') id: string,
+    @Param('companyId') companyId: string,
     @Body() approvalDto: ApprovalDto,
     @Request() req
   ) {
@@ -141,7 +143,7 @@ export class ExpenseController {
         `No se encontró ID de usuario en el JWT, se usará el proporcionado: ${approvalDto.userId || 'ninguno'}`
       )
     }
-    const companyId = req.user.companyId
+
     return this.expenseService.rejectInvoice(id, approvalDto, companyId)
   }
 
