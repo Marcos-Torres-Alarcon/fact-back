@@ -12,6 +12,7 @@ import {
   Logger,
   Req,
 } from '@nestjs/common'
+import { Types } from 'mongoose'
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../../auth/guards/roles.guard'
 import { Roles } from '../../auth/decorators/roles.decorator'
@@ -47,6 +48,11 @@ export class UsersController {
           'El companyId es requerido para usuarios de tipo COMPANY',
           HttpStatus.BAD_REQUEST
         )
+      }
+
+      // Generar userId automáticamente si no se proporciona
+      if (!createUserDto.userId) {
+        createUserDto.userId = new Types.ObjectId().toString()
       }
 
       const companyId = req.user.companyId

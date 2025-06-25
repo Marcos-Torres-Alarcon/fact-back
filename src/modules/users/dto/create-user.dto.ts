@@ -18,8 +18,8 @@ export class CreateUserDto {
   _id?: string
 
   @IsString()
-  @IsNotEmpty()
-  userId: string
+  @IsOptional()
+  userId?: string
 
   @IsString()
   @IsNotEmpty()
