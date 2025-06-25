@@ -10,7 +10,7 @@ import { ProvidersModule } from './modules/providers/providers.module'
 import { EmailModule } from './modules/email/email.module'
 import { ExpenseModule } from './modules/expense/expense.module'
 import { CategoryModule } from './modules/category/category.module'
-import { CompanyModule } from './modules/company/company.module';
+import { CompanyModule } from './modules/company/company.module'
 
 @Module({
   imports: [
@@ -30,4 +30,4 @@ import { CompanyModule } from './modules/company/company.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
