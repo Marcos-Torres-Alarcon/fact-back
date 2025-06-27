@@ -54,14 +54,28 @@ export class ExpenseController {
   }
 
   @Get(':companyId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.COLABORADOR,
+    UserRole.PROVIDER
+  )
   findAll(
     @Param('companyId') companyId: string,
+    @Request() req,
     @Query() query: any,
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: 'asc' | 'desc'
   ) {
     if (sortBy) query.sortBy = sortBy
     if (sortOrder) query.sortOrder = sortOrder
+
+    // Si el usuario es COLABORADOR, solo debe ver sus propias facturas
+    if (req.user?.role === UserRole.COLABORADOR) {
+      query.createdBy = req.user._id || req.user.sub
+      this.logger.log(`Filtrando facturas para colaborador: ${query.createdBy}`)
+    }
 
     return this.expenseService.findAll(companyId, query)
   }

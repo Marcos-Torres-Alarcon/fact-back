@@ -15,9 +15,6 @@ export type UserDocument = User &
   versionKey: '__v',
 })
 export class User {
-  @Prop({ type: String, required: true })
-  _id: string
-
   @Prop({ required: true })
   firstName: string
 

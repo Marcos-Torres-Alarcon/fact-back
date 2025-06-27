@@ -13,10 +13,6 @@ import {
 import { UserRole } from '../../../shared/enums/role.enum'
 
 export class CreateUserDto {
-  @IsMongoId()
-  @IsOptional()
-  _id?: string
-
   @IsString()
   @IsOptional()
   userId?: string

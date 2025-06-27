@@ -333,6 +333,12 @@ export class ExpenseService {
       return /^[0-9a-fA-F]{24}$/.test(id)
     }
 
+    if (filters.createdBy) {
+      if (isValidObjectId(filters.createdBy)) {
+        query.createdBy = filters.createdBy
+      }
+    }
+
     if (filters.projectId) {
       if (isValidObjectId(filters.projectId)) {
         query.$or = [

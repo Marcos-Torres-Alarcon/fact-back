@@ -230,7 +230,6 @@ export class AuthService {
     if (!user) {
       const newUser = await this.usersService.create(
         {
-          _id: uuidv4(),
           userId: new Types.ObjectId().toString(),
           firstName: googleUser.firstName,
           lastName: googleUser.lastName,
