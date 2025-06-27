@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsEnum, IsNumber } from 'class-validator'
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  IsDateString,
+} from 'class-validator'
 import { ExpenseStatus } from '../entities/expense.entity'
 
 export class UpdateExpenseDto {
@@ -20,6 +26,10 @@ export class UpdateExpenseDto {
 
   @IsString()
   @IsOptional()
+  description?: string
+
+  @IsString()
+  @IsOptional()
   fechaEmision?: string
 
   @IsEnum(['pending', 'approved', 'rejected'])
@@ -29,4 +39,19 @@ export class UpdateExpenseDto {
   @IsString()
   @IsOptional()
   companyId?: string
+
+  @IsString()
+  @IsOptional()
+  rejectionReason?: string
+
+  @IsString()
+  @IsOptional()
+  approvedBy?: string
+
+  @IsString()
+  @IsOptional()
+  rejectedBy?: string
+
+  @IsOptional()
+  statusDate?: Date
 }
