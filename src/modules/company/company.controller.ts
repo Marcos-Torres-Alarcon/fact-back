@@ -6,11 +6,8 @@ import {
   Patch,
   Param,
   Delete,
-  UseInterceptors,
-  UploadedFile,
   UseGuards,
 } from '@nestjs/common'
-import { FileInterceptor } from '@nestjs/platform-express'
 import { CompanyService } from './company.service'
 import { CreateCompanyDto } from './dto/create-company.dto'
 import { UpdateCompanyDto } from './dto/update-company.dto'
@@ -64,36 +61,5 @@ export class CompanyController {
     @Body() config: { name?: string; logo?: string }
   ) {
     return this.companyService.updateCompanyConfig(companyId, config)
-  }
-
-  @Post('config/:companyId/logo')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN2)
-  @UseInterceptors(
-    FileInterceptor('logo', {
-      fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
-          return cb(new Error('Only image files are allowed!'), false)
-        }
-        cb(null, true)
-      },
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-    })
-  )
-  async uploadLogo(
-    @Param('companyId') companyId: string,
-    @UploadedFile() file: Express.Multer.File
-  ) {
-    if (!file) {
-      throw new Error('No file uploaded')
-    }
-
-    // TODO: Implementar subida a AWS S3
-    // Por ahora, simulamos una URL de S3
-    const s3Url = `https://your-s3-bucket.s3.amazonaws.com/logos/${companyId}/${Date.now()}-${file.originalname}`
-
-    return this.companyService.updateCompanyConfig(companyId, { logo: s3Url })
   }
 }

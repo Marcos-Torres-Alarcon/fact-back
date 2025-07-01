@@ -12,10 +12,7 @@ import {
   HttpCode,
   Logger,
   Req,
-  UseInterceptors,
-  UploadedFile,
 } from '@nestjs/common'
-import { FileInterceptor } from '@nestjs/platform-express'
 import { Types } from 'mongoose'
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../../auth/guards/roles.guard'
@@ -380,55 +377,6 @@ export class UsersController {
       )
       throw new HttpException(
         error.message || 'Error al actualizar la configuración de empresa',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    }
-  }
-
-  @Post('config/:companyId/logo')
-  @Roles(UserRole.ADMIN2)
-  @UseInterceptors(
-    FileInterceptor('logo', {
-      fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
-          return cb(new Error('Only image files are allowed!'), false)
-        }
-        cb(null, true)
-      },
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-    })
-  )
-  async uploadLogo(
-    @Param('companyId') companyId: string,
-    @UploadedFile() file: Express.Multer.File
-  ) {
-    try {
-      this.logger.log(
-        `Recibida solicitud para subir logo de empresa: ${companyId}`
-      )
-
-      if (!file) {
-        throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST)
-      }
-
-      // TODO: Implementar subida a AWS S3
-      // Por ahora, simulamos una URL de S3
-      const s3Url = `https://your-s3-bucket.s3.amazonaws.com/logos/${companyId}/${Date.now()}-${file.originalname}`
-
-      const config = await this.usersService.updateCompanyConfig(companyId, {
-        logo: s3Url,
-      })
-      this.logger.log(`Logo subido exitosamente para companyId: ${companyId}`)
-      return config
-    } catch (error) {
-      this.logger.error(
-        `Error al subir logo de empresa: ${error.message}`,
-        error.stack
-      )
-      throw new HttpException(
-        error.message || 'Error al subir el logo de empresa',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR
       )
     }
