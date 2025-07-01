@@ -15,7 +15,7 @@ module.exports = {
     node: true,
     jest: true,
   },
-  ignorePatterns: ['.eslintrc.js'],
+  ignorePatterns: ['.eslintrc.js', 'src/modules/project/entities/project-type.entity.ts'],
   rules: {
     'prettier/prettier': ['error', { endOfLine: 'off' }],
     '@typescript-eslint/interface-name-prefix': 'off',

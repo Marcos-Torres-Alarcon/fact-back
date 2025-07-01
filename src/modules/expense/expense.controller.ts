@@ -85,6 +85,47 @@ export class ExpenseController {
     return this.expenseService.findOne(id, companyId)
   }
 
+  @Get(':id/:companyId/sunat-validation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.ADMIN2,
+    UserRole.COLABORADOR,
+    UserRole.PROVIDER
+  )
+  getSunatValidation(
+    @Param('id') id: string,
+    @Param('companyId') companyId: string
+  ) {
+    return this.expenseService.getSunatValidationInfo(id, companyId)
+  }
+
+  @Get('test-sunat-credentials')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN2)
+  async testSunatCredentials(@Request() req) {
+    try {
+      const companyId = req.user.companyId
+      const token = await this.expenseService.generateTokenSunat(companyId)
+      return {
+        success: true,
+        message: 'Credenciales SUNAT funcionando correctamente',
+        token: {
+          access_token: token.access_token ? 'PRESENTE' : 'AUSENTE',
+          token_type: token.token_type,
+          expires_in: token.expires_in,
+        },
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error en credenciales SUNAT',
+        error: error.message,
+        details: error.response?.data || 'Sin detalles adicionales',
+      }
+    }
+  }
+
   @Patch(':id/:companyId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(

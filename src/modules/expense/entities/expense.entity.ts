@@ -1,7 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
 
-export type ExpenseStatus = 'pending' | 'approved' | 'rejected'
+export type ExpenseStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'sunat_valid'
+  | 'sunat_valid_not_ours'
+  | 'sunat_not_found'
+  | 'sunat_error'
 
 export interface ExpenseDocument extends Document {
   proyectId: Types.ObjectId
@@ -16,7 +23,7 @@ export interface ExpenseDocument extends Document {
   rejectedBy?: string
   rejectionReason?: string
   companyId: string
-  fechaEmision?: Date
+  fechaEmision?: string
 }
 
 export interface GetExpenseDocument extends ExpenseDocument {
@@ -64,8 +71,8 @@ export class Expense {
   @Prop({ type: 'ObjectId', ref: 'Company', required: true })
   companyId: string
 
-  @Prop({ type: Date, required: false })
-  fechaEmision?: Date
+  @Prop({ type: String, required: false })
+  fechaEmision?: string
 }
 
 export const ExpenseSchema = SchemaFactory.createForClass(Expense)

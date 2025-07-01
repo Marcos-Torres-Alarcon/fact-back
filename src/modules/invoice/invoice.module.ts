@@ -7,6 +7,7 @@ import { ProjectModule } from '../project/project.module'
 import { HttpModule } from '@nestjs/axios'
 import { EmailModule } from '../email/email.module'
 import { UsersModule } from '../users/users.module'
+import { SunatConfigModule } from '../sunat-config/sunat-config.module'
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UsersModule } from '../users/users.module'
     HttpModule,
     EmailModule,
     UsersModule,
+    SunatConfigModule,
   ],
   controllers: [InvoiceController],
   providers: [InvoiceService],

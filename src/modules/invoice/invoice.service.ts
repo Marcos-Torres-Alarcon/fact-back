@@ -18,6 +18,7 @@ import * as path from 'path'
 import { firstValueFrom } from 'rxjs'
 import { EmailService } from '../email/email.service'
 import { UsersService } from '../users/services/users.service'
+import { SunatConfigService } from '../sunat-config/sunat-config.service'
 import { UserRole } from '../auth/enums/user-role.enum'
 
 interface InvoiceData {
@@ -41,7 +42,8 @@ export class InvoiceService {
     private invoiceModel: Model<Invoice>,
     private readonly httpService: HttpService,
     private readonly emailService: EmailService,
-    private readonly usersService: UsersService
+    private readonly usersService: UsersService,
+    private readonly sunatConfigService: SunatConfigService
   ) {
     // Asegurarse de que el directorio temporal existe y tiene permisos
     try {
@@ -339,37 +341,63 @@ export class InvoiceService {
 
   ////SUNAT
 
-  async generateTokenSunat() {
-    const api = `https://api-seguridad.sunat.gob.pe/v1/clientesextranet/${process.env.ID_SUNAT}/oauth2/token/`
-    //x-www-form-urlencoded
-    const headers = {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    }
-
-    const grant_type = 'client_credentials'
-    const scope = 'https://api.sunat.gob.pe/v1/contribuyente/contribuyentes'
-    const client_id = process.env.ID_SUNAT
-    const client_secret = process.env.KEY_SUNAT
-
-    const data = {
-      grant_type: grant_type,
-      scope: scope,
-      client_id: client_id,
-      client_secret: client_secret,
-    }
+  async generateTokenSunat(companyId: string) {
     try {
+      // Obtener credenciales desde la base de datos
+      const credentials =
+        await this.sunatConfigService.getActiveCredentials(companyId)
+      const client_id = credentials.clientId
+      const client_secret = credentials.clientSecret
+
+      if (!client_id || !client_secret) {
+        this.logger.error(
+          'Credenciales SUNAT no configuradas en la base de datos'
+        )
+        throw new HttpException(
+          'Credenciales SUNAT no configuradas. Contacte al administrador.',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        )
+      }
+
+      const api = `https://api-seguridad.sunat.gob.pe/v1/clientesextranet/${client_id}/oauth2/token/`
+      const headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      }
+
+      const grant_type = 'client_credentials'
+      const scope = 'https://api.sunat.gob.pe/v1/contribuyente/contribuyentes'
+
+      const data = {
+        grant_type: grant_type,
+        scope: scope,
+        client_id: client_id,
+        client_secret: client_secret,
+      }
+
+      this.logger.debug(`Solicitando token SUNAT: ${api}`)
       const response = await firstValueFrom(
         this.httpService.post(api, data, { headers })
       )
+      this.logger.log('Token SUNAT obtenido exitosamente')
       return response.data
     } catch (error) {
-      console.log(error)
+      this.logger.error('Error generating SUNAT token:', error)
+      if (error.response) {
+        this.logger.error(
+          `Token Error Response: Status: ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`
+        )
+      }
+      throw new HttpException(
+        'Error al generar token de SUNAT',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
     }
   }
 
   async validateInvoiceFromImage(
     fileBuffer: Buffer,
-    mimeType: string
+    mimeType: string,
+    companyId: string
   ): Promise<any> {
     this.logger.log('Starting file processing...')
     let extractedData: any
@@ -464,7 +492,7 @@ export class InvoiceService {
       if (extractedData) {
         this.logger.log('Calling SUNAT validation service...', extractedData)
         const sunatApiUrl = `https://api.sunat.gob.pe/v1/contribuyente/contribuyentes/10450256451/validarcomprobante`
-        const sunatToken = await this.generateTokenSunat()
+        const sunatToken = await this.generateTokenSunat(companyId)
 
         if (!sunatApiUrl || !sunatToken) {
           this.logger.error('SUNAT API configuration missing')
@@ -722,7 +750,8 @@ export class InvoiceService {
       // Validar la factura
       const validationResult = await this.validateInvoiceFromImage(
         invoiceFile.buffer,
-        invoiceFile.mimetype
+        invoiceFile.mimetype,
+        user.companyId
       )
 
       // Crear la factura

@@ -18,6 +18,10 @@ import { ApprovalDto } from './dto/approval.dto'
 import { UserRole } from '../auth/enums/user-role.enum'
 import { ProjectService } from '../project/project.service'
 import { UsersService } from '../users/services/users.service'
+import { SunatConfigService } from '../sunat-config/sunat-config.service'
+import { HttpService } from '@nestjs/axios'
+import { firstValueFrom } from 'rxjs'
+
 @Injectable()
 export class ExpenseService {
   private readonly logger = new Logger(ExpenseService.name)
@@ -30,13 +34,111 @@ export class ExpenseService {
     private expenseRepository: Model<Expense>,
     private readonly emailService: EmailService,
     private readonly projectService: ProjectService,
-    private readonly usersService: UsersService
+    private readonly usersService: UsersService,
+    private readonly sunatConfigService: SunatConfigService,
+    private readonly httpService: HttpService
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY')
     if (!apiKey) {
       throw new Error('OpenAI API key is not configured.')
     }
     this.openai = new OpenAI({ apiKey })
+  }
+
+  // Métodos para validación SUNAT
+  async generateTokenSunat(companyId: string) {
+    try {
+      // Obtener credenciales desde la base de datos
+      const credentials =
+        await this.sunatConfigService.getActiveCredentials(companyId)
+      const client_id = credentials.clientId
+      const client_secret = credentials.clientSecret
+
+      if (!client_id || !client_secret) {
+        this.logger.error(
+          'Credenciales SUNAT no configuradas en la base de datos'
+        )
+        this.logger.error(`clientId: ${client_id ? 'CONFIGURADO' : 'FALTANTE'}`)
+        this.logger.error(
+          `clientSecret: ${client_secret ? 'CONFIGURADO' : 'FALTANTE'}`
+        )
+        throw new HttpException(
+          'Credenciales SUNAT no configuradas. Contacte al administrador.',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        )
+      }
+
+      const api = `https://api-seguridad.sunat.gob.pe/v1/clientesextranet/${client_id}/oauth2/token/`
+      const headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      }
+
+      const grant_type = 'client_credentials'
+      const scope = 'https://api.sunat.gob.pe/v1/contribuyente/contribuyentes'
+
+      const data = {
+        grant_type: grant_type,
+        scope: scope,
+        client_id: client_id,
+        client_secret: client_secret,
+      }
+
+      this.logger.debug(`Solicitando token SUNAT: ${api}`)
+      const response = await firstValueFrom(
+        this.httpService.post(api, data, { headers })
+      )
+      this.logger.log('Token SUNAT obtenido exitosamente')
+      return response.data
+    } catch (error) {
+      this.logger.error('Error generating SUNAT token:', error)
+      if (error.response) {
+        this.logger.error(
+          `Token Error Response: Status: ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`
+        )
+      }
+      throw new HttpException(
+        'Error al generar token de SUNAT',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
+  }
+
+  private interpretSunatResponse(sunatData: any): {
+    status: string
+    details: any
+    message: string
+  } {
+    this.logger.log('Interpreting SUNAT response...', sunatData)
+
+    if (sunatData.success === true && sunatData.data?.estadoCp === '0') {
+      return {
+        status: 'VALIDO_ACEPTADO',
+        details: sunatData.data,
+        message: 'El comprobante es válido y fue facturado a esta empresa.',
+      }
+    } else if (sunatData.success === true && sunatData.data?.estadoCp === '1') {
+      return {
+        status: 'VALIDO_NO_PERTENECE',
+        details: sunatData.data,
+        message:
+          'El comprobante es válido, pero no fue facturado a esta empresa.',
+      }
+    } else if (sunatData.cod === '98') {
+      return {
+        status: 'NO_ENCONTRADO',
+        details: sunatData.msg || 'El comprobante no existe en SUNAT.',
+        message: 'El comprobante no existe en SUNAT.',
+      }
+    } else {
+      this.logger.warn(
+        `Uninterpretable SUNAT response: ${JSON.stringify(sunatData)}`
+      )
+      return {
+        status: 'ERROR_SUNAT',
+        details: sunatData,
+        message: 'Error al validar el comprobante.',
+      }
+    }
   }
 
   async analyzeImageWithUrl(body: CreateExpenseDto): Promise<Expense> {
@@ -98,22 +200,215 @@ export class ExpenseService {
         )
       }
 
+      let sunatValidationResult = {
+        status: 'PENDING',
+        details: null,
+        message: 'Validación pendiente',
+      }
+      let expenseStatus = 'pending'
+
+      this.logger.log('=== INICIO VALIDACIÓN SUNAT ===')
+      this.logger.log(`Datos extraídos: ${JSON.stringify(jsonObject)}`)
+      this.logger.log(`RUC Emisor: ${jsonObject.rucEmisor}`)
+      this.logger.log(`Serie: ${jsonObject.serie}`)
+      this.logger.log(`Correlativo: ${jsonObject.correlativo}`)
+      this.logger.log(
+        `¿Tiene datos suficientes?: ${jsonObject.rucEmisor && jsonObject.serie && jsonObject.correlativo}`
+      )
+
+      if (jsonObject.rucEmisor && jsonObject.serie && jsonObject.correlativo) {
+        try {
+          this.logger.log('Iniciando validación SUNAT para expense...', {
+            rucEmisor: jsonObject.rucEmisor,
+            serie: jsonObject.serie,
+            correlativo: jsonObject.correlativo,
+          })
+
+          // Usar el mismo RUC hardcodeado que en invoice
+          const sunatApiUrl = `https://api.sunat.gob.pe/v1/contribuyente/contribuyentes/10450256451/validarcomprobante`
+          this.logger.log(
+            `Usando RUC empresa HARDCODEADO para consulta SUNAT: 10450256451`
+          )
+
+          const sunatToken = await this.generateTokenSunat(body.companyId)
+
+          if (sunatToken?.access_token) {
+            // Formatear fecha al formato YYYY-MM-DD para SUNAT
+            let fechaFormateada = jsonObject.fechaEmision
+            if (fechaFormateada) {
+              // Convertir diferentes formatos a YYYY-MM-DD
+              if (fechaFormateada.includes('-')) {
+                const partes = fechaFormateada.split('-')
+                if (partes.length === 3) {
+                  if (partes[0].length === 2) {
+                    // DD-MM-YYYY -> YYYY-MM-DD
+                    fechaFormateada = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`
+                  } else if (partes[0].length === 4) {
+                    // Ya está en YYYY-MM-DD, solo asegurar formato
+                    fechaFormateada = `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`
+                  }
+                }
+              } else if (fechaFormateada.includes('/')) {
+                const partes = fechaFormateada.split('/')
+                if (partes.length === 3 && partes[0].length === 2) {
+                  // DD/MM/YYYY -> YYYY-MM-DD
+                  fechaFormateada = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`
+                }
+              }
+
+              // Validar que la fecha no sea muy futura (podría indicar error de OCR)
+              const fechaValidacion = new Date(fechaFormateada)
+              const fechaActual = new Date()
+              const unAnioFuturo = new Date()
+              unAnioFuturo.setFullYear(fechaActual.getFullYear() + 1)
+
+              if (fechaValidacion > unAnioFuturo) {
+                this.logger.warn(
+                  `Fecha posiblemente incorrecta (muy futura): ${fechaFormateada}. Podría ser error de OCR.`
+                )
+                // Intentar con el año anterior (error común de OCR)
+                const añoAnterior = fechaValidacion.getFullYear() - 1
+                fechaFormateada = `${añoAnterior}-${fechaValidacion.getMonth() + 1}-${fechaValidacion.getDate()}`
+                this.logger.log(
+                  `Intentando con año anterior: ${fechaFormateada}`
+                )
+              }
+
+              this.logger.debug(
+                `Fecha original: ${jsonObject.fechaEmision}, Fecha formateada para SUNAT: ${fechaFormateada}`
+              )
+            }
+
+            const params = {
+              numRuc: jsonObject.rucEmisor,
+              codComp:
+                jsonObject.tipoComprobante === 'Factura'
+                  ? '01'
+                  : jsonObject.tipoComprobante === 'Boleta'
+                    ? '03'
+                    : '01',
+              numeroSerie: jsonObject.serie,
+              numero: jsonObject.correlativo,
+              fechaEmision: fechaFormateada,
+              monto: jsonObject.montoTotal?.toFixed(2),
+            }
+
+            this.logger.log(`Validando con SUNAT - RUC Empresa: 10450256451`)
+            this.logger.log(`Parámetros SUNAT: ${JSON.stringify(params)}`)
+
+            const headers = {
+              Authorization: `Bearer ${sunatToken.access_token}`,
+              'Content-Type': 'application/json',
+            }
+
+            this.logger.debug(
+              `Requesting SUNAT: URL=${sunatApiUrl}, Params=${JSON.stringify(params)}, Headers=${JSON.stringify(headers)}`
+            )
+
+            try {
+              const response = await firstValueFrom(
+                this.httpService.post(sunatApiUrl, params, { headers })
+              )
+
+              this.logger.log(`SUNAT response status: ${response.status}`)
+              this.logger.debug(
+                `SUNAT response data: ${JSON.stringify(response.data)}`
+              )
+              sunatValidationResult = this.interpretSunatResponse(response.data)
+
+              // Actualizar status basado en validación SUNAT
+              switch (sunatValidationResult.status) {
+                case 'VALIDO_ACEPTADO':
+                  expenseStatus = 'sunat_valid'
+                  break
+                case 'VALIDO_NO_PERTENECE':
+                  expenseStatus = 'sunat_valid_not_ours'
+                  break
+                case 'NO_ENCONTRADO':
+                  expenseStatus = 'sunat_not_found'
+                  break
+                default:
+                  expenseStatus = 'sunat_error'
+              }
+
+              this.logger.log(
+                `SUNAT validation completed. Status: ${sunatValidationResult.status}`
+              )
+            } catch (error) {
+              this.logger.error(
+                `SUNAT API Error: ${error.message}`,
+                error.stack
+              )
+
+              // Capturar detalles específicos del error HTTP
+              let errorDetails = error.message
+              if (error.response) {
+                errorDetails = `Status: ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`
+                this.logger.error(`SUNAT Error Response: ${errorDetails}`)
+              }
+
+              expenseStatus = 'sunat_error'
+              sunatValidationResult = {
+                status: 'ERROR_SUNAT',
+                details: errorDetails,
+                message: 'Error en la comunicación con SUNAT.',
+              }
+            }
+          } else {
+            this.logger.error('No se pudo obtener token de SUNAT')
+            expenseStatus = 'sunat_error'
+          }
+        } catch (error) {
+          this.logger.error(
+            `Error en validación SUNAT: ${error.message}`,
+            error.stack
+          )
+          expenseStatus = 'sunat_error'
+        }
+      } else {
+        this.logger.warn('Datos insuficientes para validación SUNAT', {
+          rucEmisor: jsonObject.rucEmisor,
+          serie: jsonObject.serie,
+          correlativo: jsonObject.correlativo,
+        })
+      }
+
       const categoryObject = Types.ObjectId.createFromHexString(body.categoryId)
       const projectObject = Types.ObjectId.createFromHexString(body.proyectId)
 
+      // Validar que companyId esté presente
+      if (!body.companyId) {
+        this.logger.error('CompanyId es null o undefined')
+        throw new HttpException(
+          'CompanyId es requerido',
+          HttpStatus.BAD_REQUEST
+        )
+      }
+
+      this.logger.log(`Creando expense con companyId: ${body.companyId}`)
+
       const expense = await this.expenseRepository.create({
-        ...body,
         categoryId: categoryObject,
         proyectId: projectObject,
+        companyId: body.companyId,
         total: jsonObject.montoTotal,
-        data: JSON.stringify(jsonObject),
+        data: JSON.stringify({
+          ...jsonObject,
+          sunatValidation: sunatValidationResult,
+        }),
         file: body.imageUrl,
-        status: 'pending',
-        createdBy: body.userId,
-        fechaEmision: jsonObject.fechaEmision
-          ? parseFechaEmision(jsonObject.fechaEmision)
-          : undefined,
+        status: expenseStatus,
+        createdBy: body.userId || 'system',
+        fechaEmision: jsonObject.fechaEmision,
       })
+
+      this.logger.log('=== RESULTADO FINAL ===')
+      this.logger.log(`Status final: ${expenseStatus}`)
+      this.logger.log(
+        `SUNAT Validation Result: ${JSON.stringify(sunatValidationResult)}`
+      )
+      this.logger.log(`CompanyId guardado: ${body.companyId}`)
+      this.logger.log(`Expense creado con ID: ${expense._id}`)
 
       const project = await this.projectService.findOne2(body.proyectId)
       try {
@@ -461,6 +756,45 @@ export class ExpenseService {
       .populate('proyectId')
       .populate('categoryId')
       .exec()
+  }
+
+  async getSunatValidationInfo(id: string, companyId: string): Promise<any> {
+    const expense = await this.findOne(id, companyId)
+
+    if (!expense) {
+      throw new NotFoundException(`Expense with ID ${id} not found`)
+    }
+
+    try {
+      const data = JSON.parse(expense.data)
+      const sunatValidation = data.sunatValidation
+
+      return {
+        expenseId: String((expense as any)._id),
+        status: expense.status,
+        sunatValidation: sunatValidation || null,
+        hasValidation: !!sunatValidation,
+        message:
+          sunatValidation?.message ||
+          'No hay información de validación SUNAT disponible',
+        extractedData: {
+          rucEmisor: data.rucEmisor,
+          serie: data.serie,
+          correlativo: data.correlativo,
+          fechaEmision: data.fechaEmision,
+          montoTotal: data.montoTotal,
+        },
+      }
+    } catch (error) {
+      this.logger.error(`Error parsing expense data: ${error.message}`)
+      return {
+        expenseId: String((expense as any)._id),
+        status: expense.status,
+        sunatValidation: null,
+        hasValidation: false,
+        message: 'Error al procesar la información de validación SUNAT',
+      }
+    }
   }
 
   async update(

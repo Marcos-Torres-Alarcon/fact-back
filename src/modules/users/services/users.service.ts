@@ -8,6 +8,10 @@ import {
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import { User, UserDocument, UserResponse } from '../entities/user.entity'
+import {
+  CompanyConfig,
+  CompanyConfigDocument,
+} from '../entities/company-config.entity'
 import { CreateUserDto } from '../dto/create-user.dto'
 import { UpdateUserDto } from '../dto/update-user.dto'
 import * as bcrypt from 'bcrypt'
@@ -21,6 +25,8 @@ export class UsersService {
 
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(CompanyConfig.name)
+    private companyConfigModel: Model<CompanyConfigDocument>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService
   ) {}
@@ -252,6 +258,119 @@ export class UsersService {
     } catch (error) {
       this.logger.error(
         `Error al eliminar usuario: ${error.message}`,
+        error.stack
+      )
+      throw error
+    }
+  }
+
+  // Métodos para configuración de empresa
+  async getCompanyConfig(companyId: string) {
+    try {
+      this.logger.log(`Obteniendo configuración para companyId: ${companyId}`)
+
+      // Buscar configuración existente
+      let config = await this.companyConfigModel.findOne({ companyId }).exec()
+
+      if (!config) {
+        // Si no existe configuración, verificar que existe al menos un usuario de esta empresa
+        const adminUser = await this.userModel
+          .findOne({
+            companyId,
+            role: { $in: [UserRole.ADMIN2, UserRole.COMPANY] },
+          })
+          .exec()
+
+        if (!adminUser) {
+          this.logger.warn(
+            `No se encontró usuario administrador para companyId: ${companyId}`
+          )
+          throw new NotFoundException('No se encontró configuración de empresa')
+        }
+
+        // Crear configuración por defecto
+        config = new this.companyConfigModel({
+          companyId,
+          name: 'Mi Empresa',
+          logo: null,
+        })
+        await config.save()
+        this.logger.log(
+          `Configuración por defecto creada para companyId: ${companyId}`
+        )
+      }
+
+      return {
+        _id: config._id,
+        companyId: config.companyId,
+        name: config.name,
+        logo: config.logo || null,
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener configuración de empresa: ${error.message}`,
+        error.stack
+      )
+      throw error
+    }
+  }
+
+  async updateCompanyConfig(
+    companyId: string,
+    config: { name?: string; logo?: string }
+  ) {
+    try {
+      this.logger.log(`Actualizando configuración para companyId: ${companyId}`)
+
+      // Buscar configuración existente
+      let companyConfig = await this.companyConfigModel
+        .findOne({ companyId })
+        .exec()
+
+      if (!companyConfig) {
+        // Si no existe, verificar que existe al menos un usuario de esta empresa
+        const adminUser = await this.userModel
+          .findOne({
+            companyId,
+            role: { $in: [UserRole.ADMIN2, UserRole.COMPANY] },
+          })
+          .exec()
+
+        if (!adminUser) {
+          this.logger.warn(
+            `No se encontró usuario administrador para companyId: ${companyId}`
+          )
+          throw new NotFoundException('No se encontró configuración de empresa')
+        }
+
+        // Crear nueva configuración
+        companyConfig = new this.companyConfigModel({
+          companyId,
+          name: config.name || 'Mi Empresa',
+          logo: config.logo || null,
+        })
+      } else {
+        // Actualizar configuración existente
+        if (config.name) {
+          companyConfig.name = config.name
+        }
+        if (config.logo) {
+          companyConfig.logo = config.logo
+        }
+      }
+
+      await companyConfig.save()
+      this.logger.log(`Configuración actualizada para companyId: ${companyId}`)
+
+      return {
+        _id: companyConfig._id,
+        companyId: companyConfig.companyId,
+        name: companyConfig.name,
+        logo: companyConfig.logo || null,
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error al actualizar configuración de empresa: ${error.message}`,
         error.stack
       )
       throw error

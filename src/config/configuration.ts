@@ -10,4 +10,9 @@ export default () => ({
   api: {
     url: process.env.API_URL || 'http://localhost:3015',
   },
+  sunat: {
+    clientId: process.env.ID_SUNAT,
+    clientSecret: process.env.KEY_SUNAT,
+    rucEmpresa: process.env.RUC_EMPRESA,
+  },
 })

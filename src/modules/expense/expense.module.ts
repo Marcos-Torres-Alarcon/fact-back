@@ -8,6 +8,8 @@ import { EmailModule } from '../email/email.module'
 import { CategoryModule } from '../category/category.module'
 import { ProjectModule } from '../project/project.module'
 import { UsersModule } from '../users/users.module'
+import { SunatConfigModule } from '../sunat-config/sunat-config.module'
+import { HttpModule } from '@nestjs/axios'
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { UsersModule } from '../users/users.module'
     CategoryModule,
     ProjectModule,
     UsersModule,
+    SunatConfigModule,
+    HttpModule,
   ],
   controllers: [ExpenseController],
   providers: [ExpenseService],

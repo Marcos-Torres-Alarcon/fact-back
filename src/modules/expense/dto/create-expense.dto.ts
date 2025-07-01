@@ -21,7 +21,15 @@ export class CreateExpenseDto {
   @IsOptional()
   total?: number
 
-  @IsEnum(['pending', 'approved', 'rejected'])
+  @IsEnum([
+    'pending',
+    'approved',
+    'rejected',
+    'sunat_valid',
+    'sunat_valid_not_ours',
+    'sunat_not_found',
+    'sunat_error',
+  ])
   @IsOptional()
   status?: ExpenseStatus
 

@@ -41,8 +41,9 @@ export class InvoiceController {
   ) {}
 
   @Get('token-sunat')
-  getToken() {
-    return this.invoiceService.generateTokenSunat()
+  getToken(@Req() req: any) {
+    const companyId = req.user.companyId
+    return this.invoiceService.generateTokenSunat(companyId)
   }
 
   @Post('validate-from-image')
@@ -68,7 +69,10 @@ export class InvoiceController {
       },
     })
   )
-  async validateInvoice(@UploadedFile() file: Express.Multer.File) {
+  async validateInvoice(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any
+  ) {
     this.logger.log(`Received file: ${file?.originalname}, size: ${file?.size}`)
 
     if (!file || !file.buffer) {
@@ -79,10 +83,13 @@ export class InvoiceController {
       )
     }
 
+    const companyId = req.user.companyId
+
     try {
       const result = await this.invoiceService.validateInvoiceFromImage(
         file.buffer,
-        file.mimetype
+        file.mimetype,
+        companyId
       )
       this.logger.log(
         `Validation result for ${file.originalname}: ${JSON.stringify(result)}`

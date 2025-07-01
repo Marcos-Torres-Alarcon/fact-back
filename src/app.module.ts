@@ -11,6 +11,7 @@ import { EmailModule } from './modules/email/email.module'
 import { ExpenseModule } from './modules/expense/expense.module'
 import { CategoryModule } from './modules/category/category.module'
 import { CompanyModule } from './modules/company/company.module'
+import { SunatConfigModule } from './modules/sunat-config/sunat-config.module'
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { CompanyModule } from './modules/company/company.module'
     ExpenseModule,
     CategoryModule,
     CompanyModule,
+    SunatConfigModule,
   ],
   controllers: [AppController],
   providers: [AppService],
