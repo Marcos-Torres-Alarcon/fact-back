@@ -310,12 +310,24 @@ export class UsersController {
 
   // Endpoints para configuración de empresa
   @Get('config/:companyId')
-  @Roles(UserRole.ADMIN2, UserRole.COLABORADOR)
-  async getCompanyConfig(@Param('companyId') companyId: string) {
+  @Roles(UserRole.ADMIN2, UserRole.COMPANY, UserRole.COLABORADOR)
+  async getCompanyConfig(
+    @Param('companyId') companyId: string,
+    @Req() req: any
+  ) {
     try {
       this.logger.log(
         `Recibida solicitud para obtener configuración de empresa: ${companyId}`
       )
+
+      // Verificar que el usuario tiene acceso a esta empresa
+      if (req.user.companyId !== companyId) {
+        throw new HttpException(
+          'No tienes permisos para ver la configuración de esta empresa',
+          HttpStatus.FORBIDDEN
+        )
+      }
+
       const config = await this.usersService.getCompanyConfig(companyId)
       this.logger.log(
         `Configuración obtenida exitosamente para companyId: ${companyId}`
@@ -334,15 +346,25 @@ export class UsersController {
   }
 
   @Patch('config/:companyId')
-  @Roles(UserRole.ADMIN2)
+  @Roles(UserRole.ADMIN2, UserRole.COMPANY)
   async updateCompanyConfig(
     @Param('companyId') companyId: string,
-    @Body() config: { name?: string; logo?: string }
+    @Body() config: { name?: string; logo?: string },
+    @Req() req: any
   ) {
     try {
       this.logger.log(
         `Recibida solicitud para actualizar configuración de empresa: ${companyId}`
       )
+
+      // Verificar que el usuario tiene acceso a esta empresa
+      if (req.user.companyId !== companyId) {
+        throw new HttpException(
+          'No tienes permisos para actualizar la configuración de esta empresa',
+          HttpStatus.FORBIDDEN
+        )
+      }
+
       const updatedConfig = await this.usersService.updateCompanyConfig(
         companyId,
         config

@@ -274,16 +274,11 @@ export class UsersService {
 
       if (!config) {
         // Si no existe configuración, verificar que existe al menos un usuario de esta empresa
-        const adminUser = await this.userModel
-          .findOne({
-            companyId,
-            role: { $in: [UserRole.ADMIN2, UserRole.COMPANY] },
-          })
-          .exec()
+        const anyUser = await this.userModel.findOne({ companyId }).exec()
 
-        if (!adminUser) {
+        if (!anyUser) {
           this.logger.warn(
-            `No se encontró usuario administrador para companyId: ${companyId}`
+            `No se encontró ningún usuario para companyId: ${companyId}`
           )
           throw new NotFoundException('No se encontró configuración de empresa')
         }
@@ -328,17 +323,12 @@ export class UsersService {
         .exec()
 
       if (!companyConfig) {
-        // Si no existe, verificar que existe al menos un usuario de esta empresa
-        const adminUser = await this.userModel
-          .findOne({
-            companyId,
-            role: { $in: [UserRole.ADMIN2, UserRole.COMPANY] },
-          })
-          .exec()
+        // Si no existe configuración, verificar que existe al menos un usuario de esta empresa
+        const anyUser = await this.userModel.findOne({ companyId }).exec()
 
-        if (!adminUser) {
+        if (!anyUser) {
           this.logger.warn(
-            `No se encontró usuario administrador para companyId: ${companyId}`
+            `No se encontró ningún usuario para companyId: ${companyId}`
           )
           throw new NotFoundException('No se encontró configuración de empresa')
         }
