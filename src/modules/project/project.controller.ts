@@ -165,9 +165,9 @@ export class ProjectController {
     return this.projectService.assignProvider(id, providerId)
   }
 
-  @Delete(':id')
+  @Delete(':id/:companyId')
   @Roles(UserRole.ADMIN, UserRole.ADMIN2, UserRole.COMPANY)
-  remove(@Param('id') id: string) {
-    return this.projectService.remove(id)
+  remove(@Param('id') id: string, @Param('companyId') companyId: string) {
+    return this.projectService.remove(id, companyId)
   }
 }

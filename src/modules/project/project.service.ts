@@ -258,8 +258,11 @@ export class ProjectService {
     )
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.projectModel.findOneAndDelete({ _id: id }).exec()
+  async remove(id: string, companyId: string): Promise<void> {
+    const companyIdObject = new Types.ObjectId(companyId)
+    const result = await this.projectModel
+      .findOneAndDelete({ _id: id, companyId: companyIdObject })
+      .exec()
     if (!result) {
       throw new NotFoundException('Proyecto no encontrado')
     }
