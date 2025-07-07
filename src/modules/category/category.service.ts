@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common'
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
 import { Category, CategoryDocument } from './entities/category.entity'
@@ -23,12 +28,35 @@ export class CategoryService {
         createCategoryDto.key = this.generateKey(createCategoryDto.name)
       }
 
+      const existingCategory = await this.categoryModel
+        .findOne({
+          key: createCategoryDto.key,
+          companyId: companyIdObject,
+        })
+        .exec()
+
+      if (existingCategory) {
+        throw new BadRequestException(
+          `Ya existe una categoría con el nombre "${createCategoryDto.name}" en tu empresa`
+        )
+      }
+
       const newCategory = new this.categoryModel({
         ...createCategoryDto,
         companyId: companyIdObject,
       })
       return await newCategory.save()
     } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error
+      }
+
+      if (error.code === 11000) {
+        throw new BadRequestException(
+          `Ya existe una categoría con el nombre "${createCategoryDto.name}" en tu empresa`
+        )
+      }
+
       this.logger.error(
         `Error al crear categoría: ${error.message}`,
         error.stack
