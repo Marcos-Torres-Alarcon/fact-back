@@ -5,15 +5,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common'
 import { UsersService } from '../users/services/users.service'
-import * as bcrypt from 'bcrypt'
+import * as bcrypt from 'bcryptjs'
 import { JwtService } from '@nestjs/jwt'
 import { RegisterDto } from './dto/register.dto'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
 import { User, UserDocument, UserResponse } from '../users/entities/user.entity'
-import {
-  ProviderDocument,
-} from '../providers/entities/provider.entity'
+import { ProviderDocument } from '../providers/entities/provider.entity'
 import { LoginDto } from './dto/login.dto'
 import { UserRole } from '../../shared/enums/role.enum'
 import { v4 as uuidv4 } from 'uuid'
@@ -44,9 +42,8 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     @InjectModel(User.name)
-    private userModel: Model<UserDocument>,
-
-  ) { }
+    private userModel: Model<UserDocument>
+  ) {}
 
   async register(
     registerDto: RegisterDto

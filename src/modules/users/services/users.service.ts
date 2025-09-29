@@ -14,7 +14,7 @@ import {
 } from '../entities/company-config.entity'
 import { CreateUserDto } from '../dto/create-user.dto'
 import { UpdateUserDto } from '../dto/update-user.dto'
-import * as bcrypt from 'bcrypt'
+import * as bcrypt from 'bcryptjs'
 import { UserRole } from '../../../shared/enums/role.enum'
 import { EmailService } from '../../email/email.service'
 import { ConfigService } from '@nestjs/config'
